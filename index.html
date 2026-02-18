@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>UVA OpenAlex Dashboard (Prototype)</title>
+  <title>UVA OpenAlex Dashboard (Fixed)</title>
   <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
   <style>
     body { font-family: -apple-system, BlinkMacSystemFont, sans-serif; margin: 2rem; max-width: 1200px; }
@@ -13,6 +13,10 @@
     .chart-container { height: 300px; margin: 1rem 0; }
     .loading { opacity: 0.5; }
     select { padding: 0.5rem; margin-right: 1rem; }
+    table { width: 100%; border-collapse: collapse; margin-top: 1rem; }
+    th, td { border: 1px solid #ddd; padding: 0.5rem; text-align: left; }
+    th { background: #f5f5f5; }
+    .debug { background: #f0f8ff; padding: 1rem; margin: 1rem 0; font-family: monospace; font-size: 0.9rem; }
   </style>
 </head>
 <body>
@@ -38,28 +42,27 @@
     <button onclick="loadData()">Update</button>
   </div>
 
-  <div id="cards" class="cards" style="display:none;">
-    <div class="card">
-      <h3>Total Works</h3>
-      <div id="totalWorks" style="font-size: 2rem; font-weight: bold;">0</div>
-    </div>
-    <div class="card">
-      <h3>Open Access</h3>
-      <div id="oaWorks" style="font-size: 2rem; font-weight: bold;">0</div>
-      <span id="oaPct"></span>
-    </div>
-    <div class="card">
-      <h3>Total Citations</h3>
-      <div id="totalCitations" style="font-size: 2rem; font-weight: bold;">0</div>
-    </div>
-    <div class="card">
-      <h3>Avg Citations</h3>
-      <div id="avgCitations" style="font-size: 2rem; font-weight: bold;">0.0</div>
-    </div>
-  </div>
+  <div id="debug" class="debug" style="display:none;"></div>
+
+  <div id="cards" class="cards" style="display:none;"></div>
 
   <div id="oaChart" class="chart-container" style="display:none;"></div>
-  <div id="recentTable" style="display:none;"></div>
+
+  <div id="recentTable" style="display:none;">
+    <h2>Top 10 Most Cited Recent Works</h2>
+    <table>
+      <thead>
+        <tr>
+          <th>Title</th>
+          <th>Type</th>
+          <th>Year</th>
+          <th>OA Status</th>
+          <th>Citations</th>
+        </tr>
+      </thead>
+      <tbody id="recentTbody"></tbody>
+    </table>
+  </div>
 
   <script>
     const UVA_ROR = "https://ror.org/0153tk833";
@@ -67,26 +70,56 @@
     let oaChart = null;
 
     async function loadData() {
+      const debugDiv = document.getElementById('debug');
+      debugDiv.style.display = 'block';
+      debugDiv.innerHTML = 'Loading...';
+      
       document.body.classList.add('loading');
       
       const startYear = document.getElementById('startYear').value;
       const endYear = document.getElementById('endYear').value;
       
-      const filter = `institutions.ror:${UVA_ROR},from_publication_date:${startYear}-01-01,to_publication_date:${endYear}-12-31`;
-      const url = `${BASE_URL}/works?filter=${encodeURIComponent(filter)}&per_page=100&sort=cited_by_count:desc`;
+      // Build filter manually to avoid encoding issues
+      const filterParts = [
+        `institutions.ror:${UVA_ROR}`,
+        `from_publication_date:${startYear}-01-01`,
+        `to_publication_date:${endYear}-12-31`
+      ];
+      const filter = filterParts.join(',');
+      
+      const params = new URLSearchParams({
+        filter: filter,
+        'per-page': 100,  // Use per-page param
+        sort: 'cited_by_count:desc'
+      });
+      
+      const url = `${BASE_URL}/works?${params}`;
+      
+      debugDiv.innerHTML = `<strong>API URL:</strong> ${url}<br>Filter: ${filter}`;
       
       try {
         const response = await fetch(url);
+        debugDiv.innerHTML += `<br><strong>Status:</strong> ${response.status} ${response.statusText}`;
+        
+        if (!response.ok) {
+          throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+        }
+        
         const data = await response.json();
-        const works = data.results;
+        debugDiv.innerHTML += `<br><strong>Results:</strong> ${data.meta?.count || 0} total, ${data.results?.length || 0} returned`;
+        
+        const works = data.results || [];
+        if (works.length === 0) {
+          debugDiv.innerHTML += '<br><em>No works found for this date range</em>';
+        }
         
         updateMetrics(works);
         updateOAPie(works);
         updateRecentTable(works.slice(0, 10));
         
       } catch (error) {
-        console.error('Error:', error);
-        alert('Failed to load data from OpenAlex');
+        debugDiv.innerHTML += `<br><strong>Error:</strong> ${error.message}`;
+        console.error('Full error:', error);
       }
       
       document.body.classList.remove('loading');
@@ -105,36 +138,47 @@
       const avgCitations = total > 0 ? (totalCitations / total).toFixed(1) : 0;
       const oaPct = total > 0 ? ((oaCount / total) * 100).toFixed(1) : 0;
       
-      document.getElementById('totalWorks').textContent = total.toLocaleString();
-      document.getElementById('oaWorks').textContent = oaCount.toLocaleString();
-      document.getElementById('oaPct').textContent = `(${oaPct}%)`;
-      document.getElementById('totalCitations').textContent = totalCitations.toLocaleString();
-      document.getElementById('avgCitations').textContent = avgCitations;
-      
-      document.getElementById('cards').style.display = 'grid';
+      // Clear and rebuild cards
+      const cardsDiv = document.getElementById('cards');
+      cardsDiv.innerHTML = `
+        <div class="card">
+          <h3>Total Works</h3>
+          <div style="font-size: 2rem; font-weight: bold;">${total.toLocaleString()}</div>
+        </div>
+        <div class="card">
+          <h3>Open Access</h3>
+          <div style="font-size: 2rem; font-weight: bold;">${oaCount.toLocaleString()}</div>
+          <span>(${oaPct}%)</span>
+        </div>
+        <div class="card">
+          <h3>Total Citations</h3>
+          <div style="font-size: 2rem; font-weight: bold;">${totalCitations.toLocaleString()}</div>
+        </div>
+        <div class="card">
+          <h3>Avg Citations</h3>
+          <div style="font-size: 2rem; font-weight: bold;">${avgCitations}</div>
+        </div>
+      `;
+      cardsDiv.style.display = 'grid';
     }
 
     function updateOAPie(works) {
       const oaStatus = { gold: 0, hybrid: 0, bronze: 0, green: 0, closed: 0 };
       
       works.forEach(work => {
-        if (work.is_oa) {
-          const status = work.open_access?.oa_status || 'green';
-          oaStatus[status] = (oaStatus[status] || 0) + 1;
-        } else {
-          oaStatus.closed++;
-        }
+        const status = work.is_oa ? (work.open_access?.oa_status || 'green') : 'closed';
+        oaStatus[status]++;
       });
       
       const ctx = document.getElementById('oaChart');
       if (oaChart) oaChart.destroy();
       
-      oaChart = new Chart(ctx, {
+      new Chart(ctx, {
         type: 'doughnut',
         data: {
-          labels: Object.keys(oaStatus),
+          labels: Object.keys(oaStatus).filter(k => oaStatus[k] > 0),
           datasets: [{
-            data: Object.values(oaStatus),
+            data: Object.values(oaStatus).filter((v,i) => Object.keys(oaStatus)[i] !== 'closed' || v > 0),
             backgroundColor: ['#ffd700', '#ff8c00', '#cd853f', '#90ee90', '#d3d3d3']
           }]
         },
@@ -149,16 +193,19 @@
     }
 
     function updateRecentTable(works) {
-      const tbody = document.getElementById('recentTable');
+      const tbody = document.getElementById('recentTbody');
       tbody.innerHTML = '';
       
       works.forEach(work => {
         const row = tbody.insertRow();
+        const title = work.display_name?.slice(0, 80) + (work.display_name?.length > 80 ? '...' : '');
+        const exploreUrl = work.id.replace('https://openalex.org/', 'https://explore.openalex.org/works/');
+        
         row.innerHTML = `
-          <td><a href="${work.id.replace('https://openalex.org/', 'https://explore.openalex.org/works/')}" target="_blank">${work.display_name.slice(0, 80)}...</a></td>
+          <td><a href="${exploreUrl}" target="_blank">${title}</a></td>
           <td>${work.type || 'article'}</td>
           <td>${work.publication_year || 'N/A'}</td>
-          <td>${work.is_oa ? work.open_access.oa_status || 'OA' : 'Closed'}</td>
+          <td>${work.is_oa ? (work.open_access?.oa_status || 'OA') : 'Closed'}</td>
           <td>${work.cited_by_count || 0}</td>
         `;
       });
@@ -166,24 +213,8 @@
       document.getElementById('recentTable').style.display = 'block';
     }
 
-    // Load data on page load
-    window.onload = loadData;
+    // Auto-load on page load
+    window.onload = () => setTimeout(loadData, 500);
   </script>
-
-  <div id="recentTable">
-    <h2>Top 10 Most Cited Recent Works</h2>
-    <table style="width:100%; border-collapse: collapse; margin-top: 1rem;">
-      <thead>
-        <tr style="background: #f5f5f5;">
-          <th style="border: 1px solid #ddd; padding: 0.5rem;">Title</th>
-          <th style="border: 1px solid #ddd; padding: 0.5rem;">Type</th>
-          <th style="border: 1px solid #ddd; padding: 0.5rem;">Year</th>
-          <th style="border: 1px solid #ddd; padding: 0.5rem;">OA Status</th>
-          <th style="border: 1px solid #ddd; padding: 0.5rem;">Citations</th>
-        </tr>
-      </thead>
-      <tbody></tbody>
-    </table>
-  </div>
 </body>
 </html>
