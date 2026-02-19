@@ -270,7 +270,6 @@
           }));
           const top = Object.entries(funders).sort(([,a],[,b])=>b-a).slice(0,10);
           document.getElementById('fundersList').innerHTML = top.map(([n,c])=>`<div>${n}: ${c}</div>`).join('');
-          document.getElementById('fundersSection').style.display = 'block';  
           alert('Funders found: ' + Object.keys(funders).length);
         }
 
