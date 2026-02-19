@@ -12,6 +12,26 @@
     select, button { padding: 6px 10px; margin-right: 10px; border-radius: 4px; border: 1px solid #ccc; }
     button { background: #2c5aa0; color: #fff; cursor: pointer; }
     button:hover { background: #1e3f70; }
+    #loadButton {
+  background: #4CAF50;
+  color: white;
+  padding: 12px 24px;
+  border: none;
+  border-radius: 6px;
+  font-size: 16px;
+  cursor: pointer;
+  margin-bottom: 20px;
+}
+
+#loadButton:hover:not(:disabled) {
+  background: #45a049;
+}
+
+#loadButton:disabled {
+  background: #cccccc;
+  cursor: not-allowed;
+}
+
     #status { margin-left: 10px; font-weight: 600; }
     .stats-grid { display: grid; grid-template-columns: repeat(auto-fit,minmax(200px,1fr)); gap: 12px; margin: 20px 0; }
     .stat-card { border: 1px solid #ddd; border-radius: 8px; padding: 14px; text-align: center; background: #fafafa; }
@@ -32,6 +52,7 @@
     <a href="https://ror.org/0153tk833" target="_blank">https://ror.org/0153tk833</a>)</p>
 
   <div class="controls">
+    <button id="loadButton" onclick="loadData()">📊 Load Data</button>
     <label>From year:
       <select id="startYear">
         <option value="2014">2014</option>
@@ -111,8 +132,12 @@
     let sortedJournals = [];
     
 async function loadData() {
+  const loadBtn = document.getElementById('loadButton');
   const statusEl = document.getElementById('status');
   const debugEl = document.getElementById('debug');
+  
+  loadBtn.disabled = true;
+  loadBtn.textContent = 'Loading...';
   statusEl.textContent = 'Loading...';
   debugEl.style.display = 'block';
   debugEl.textContent = '';
@@ -183,6 +208,8 @@ async function loadData() {
     debugEl.textContent += `\nError: ${e.message}`;
     statusEl.textContent = 'Error loading data';
   }
+  loadBtn.disabled = false;
+  loadBtn.textContent = '📊 Load Data';
 }
 
     function updateStats(works) {
@@ -457,9 +484,6 @@ function updateFundersChartDisplay() {
 }
 
 
-    window.addEventListener('load', () => {
-      setTimeout(loadData, 500);
-    });
   </script>
 </body>
 </html>
