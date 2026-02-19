@@ -21,6 +21,14 @@
     th, td { border: 1px solid #ddd; padding: 12px; text-align: left; }
     th { background: #f5f5f5; font-weight: 600; }
     .loading { opacity: 0.6; }
+    .chart-box {
+  height: 400px;  /* Fixed container height */
+  position: relative;
+}
+canvas {
+  max-height: 100% !important;
+}
+
   </style>
 </head>
 <body>
@@ -120,28 +128,42 @@
         
         const years = Object.keys(yearlyData).sort((a, b) => a - b);
         
-        if (trendsChart) trendsChart.destroy();
-        trendsChart = new Chart(document.getElementById('trendsChart'), {
-          type: 'line',
-          data: {
-            labels: years,
-            datasets: [{
-              label: 'Publications',
-              data: years.map(year => yearlyData[year]),
-              borderColor: '#2c5aa0',
-              backgroundColor: 'rgba(44, 90, 160, 0.1)',
-              fill: true,
-              tension: 0.4
-            }]
-          },
-          options: {
-            responsive: true,
-            maintainAspectRatio: false,
-            scales: {
-              y: { beginAtZero: true }
-            }
-          }
-        });
+        // Trends chart - FIXED HEIGHT
+const canvas = document.getElementById('trendsChart');
+canvas.style.height = '350px';  // Force fixed height
+canvas.style.width = '100%';
+
+if (trendsChart) trendsChart.destroy();
+trendsChart = new Chart(canvas, {
+  type: 'line',
+  data: {
+    labels: years,
+    datasets: [{
+      label: 'Publications',
+      data: years.map(year => yearlyData[year]),
+      borderColor: '#2c5aa0',
+      backgroundColor: 'rgba(44, 90, 160, 0.1)',
+      fill: true,
+      tension: 0.4,
+      pointRadius: 3
+    }]
+  },
+  options: {
+    responsive: true,
+    maintainAspectRatio: **false**,  // CRITICAL: Fixed container needed
+    interaction: { intersect: false },
+    scales: {
+      y: { 
+        beginAtZero: true,
+        ticks: { stepSize: 1 }  // Force integer steps
+      }
+    },
+    plugins: {
+      legend: { display: true }
+    }
+  }
+});
+
         document.getElementById('trendsBox').style.display = 'block';
 
         // Works table
