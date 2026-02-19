@@ -300,13 +300,15 @@
      const sorted = Object.entries(journals)
        .sort(([,a], [,b]) => b - a)
        .slice(0, 10);
+      return sorted;
     }
        const [sortedJournals, setSortedJournals] = useState([]);
   
   useEffect(() => {
     if (works.length > 0) {
-      updateJournalsChart(works);
-      setSortedJournals(sorted);  // Make 'sorted' accessible
+      const sortedJournalsData = updateJournalsChart(works);
+      console.log('Processed journals:', sortedJournalsData);
+      setSortedJournals(sortedJournalsData);  // Make 'sorted' accessible
     }
   }, [works]);
 
@@ -323,6 +325,14 @@
       )}
     </div>
   );
+useEffect(() => {
+  if (works.length > 0) {
+    updateJournalsChart(works);
+    console.log('Raw works:', works);  // Check data structure
+    console.log('Sorted journals:', sorted);  // Should show array of [venue, count]
+    setSortedJournals(sorted);
+  }
+}, [works]);
 
     window.addEventListener('load', () => {
       setTimeout(loadData, 500);
