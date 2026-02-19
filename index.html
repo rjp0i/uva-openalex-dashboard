@@ -312,27 +312,6 @@
     }
   }, [works]);
 
-  // Render Top Journals chart below other charts
-  return (
-    <div>
-      {/* Your existing charts */}
-      {sortedJournals.length > 0 && (
-        <Chart
-          data={sortedJournals.map(([venue, count]) => ({x: venue, y: count}))}
-          title="Top Journals"
-          type="bar"
-        />
-      )}
-    </div>
-  );
-useEffect(() => {
-  if (works.length > 0) {
-    updateJournalsChart(works);
-    console.log('Raw works:', works);  // Check data structure
-    console.log('Sorted journals:', sorted);  // Should show array of [venue, count]
-    setSortedJournals(sorted);
-  }
-}, [works]);
 
     window.addEventListener('load', () => {
       setTimeout(loadData, 500);
