@@ -127,7 +127,7 @@ async function loadData() {
     let allWorks = [];
     let cursor = '*';  // First page cursor
     let pageCount = 0;
-    const maxPages = 50;  // Safety cap (~10,000 works max)
+    const maxPages = 400;  // Safety cap (~80,000 works max)
     
     // Cursor pagination through ALL results
     while (cursor && pageCount < maxPages) {
