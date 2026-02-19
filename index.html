@@ -107,6 +107,7 @@
     const BASE_URL = "https://api.openalex.org";
     let trendsChart = null;
     let oaChart = null;
+    let fundersChart = null; 
     let sortedJournals = [];
     
 async function loadData() {
@@ -389,6 +390,26 @@ function updateJournalsChartDisplay() {
   });
   
   console.log('✅ Journals chart created');
+}
+
+function updateFunders(works) {
+  const funders = {};
+  
+  works.forEach(w => {
+    // OpenAlex funders are in w.funders.awards or w.funders
+    const funderList = w.funders?.awards || w.funders || [];
+    
+    funderList.forEach(funder => {
+      const name = funder.name || funder.display_name || funder.id?.split('/').pop() || 'Unknown Funder';
+      funders[name] = (funders[name] || 0) + 1;
+    });
+  });
+  
+  const sortedFunders = Object.entries(funders)
+    .sort(([,a], [,b]) => b - a)
+    .slice(0, 10);
+  
+  return sortedFunders;
 }
 
 
