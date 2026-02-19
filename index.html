@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>UVA OpenAlex Dashboard (revised)</title>
+  <title>UVA OpenAlex Dashboard</title>
   <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
   <style>
     body { font-family: -apple-system, BlinkMacSystemFont, sans-serif; margin: 2rem; max-width: 1400px; }
@@ -27,9 +27,8 @@
 
   <div class="controls">
     <label>From year: <select id="startYear">
-      <option value="2018">2018</option><option value="2019">2019</option><option value="2020">2020</option>
-      <option value="2021">2021</option><option value="2022">2022</option><option value="2023">2023</option>
-      <option value="2024" selected>2024</option><option value="2025">2025</option>
+      <option value="2020">2020</option><option value="2021">2021</option><option value="2022">2022</option>
+      <option value="2023">2023</option><option value="2024" selected>2024</option><option value="2025">2025</option>
     </select></label>
     
     <label>To year: <select id="endYear">
@@ -40,11 +39,11 @@
     <span id="status"></span>
   </div>
 
-  <div id="debug" class="debug" style="display:none;"></div>
+  <div id="debug" class="debug"></div>
 
   <div id="cards" class="cards" style="display:none;"></div>
 
-  <div class="chart-row">
+  <div class="chart-row" style="display:none;">
     <div>
       <h3>📈 Publication Trends</h3>
       <div id="trendsChart" class="chart-container"></div>
@@ -80,7 +79,7 @@
       const statusEl = document.getElementById('status');
       statusEl.textContent = 'Loading...';
       debugDiv.style.display = 'block';
-      debugDiv.innerHTML = 'Fetching UVA works...';
+      debugDiv.innerHTML = '🔍 Fetching UVA works...';
       
       document.body.classList.add('loading');
       
@@ -101,7 +100,6 @@
       });
       
       const url = `${BASE_URL}/works?${params}`;
-      
       debugDiv.innerHTML = `📡 API: ${url}`;
       
       try {
@@ -112,9 +110,10 @@
         
         const data = await response.json();
         const works = data.results || [];
-        debugDiv.innerHTML += `<br>📊 ${works.length} works loaded`;
+        debugDiv.innerHTML += `<br>📊 ${works.length} works loaded (${data.meta?.count || 0} total)`;
         
         if (works.length === 0) {
+          debugDiv.innerHTML += '<br>❌ No works in this date range';
           statusEl.textContent = 'No works found';
           return;
         }
@@ -126,4 +125,120 @@
         updateRecentTable(works.slice(0, 10));
         updateDomains(works);
         
-        statusEl.textContent = `Updated: ${works.length} works (${metri
+        statusEl.textContent = `✅ ${works.length} works (${metrics.oaPct.toFixed(1)}% OA)`;
+        
+      } catch (error) {
+        debugDiv.innerHTML += `<br>❌ ${error.message}`;
+        statusEl.textContent = 'Error loading data';
+        console.error(error);
+      }
+      
+      document.body.classList.remove('loading');
+    }
+
+    function computeMetrics(works) {
+      const total = works.length;
+      let totalCitations = 0, oaCount = 0, apcTotal = 0;
+      
+      works.forEach(work => {
+        totalCitations += work.cited_by_count || 0;
+        if (work.is_oa) oaCount++;
+        const apc = work.apc_list?.value_usd;
+        if (apc) apcTotal += parseFloat(apc);
+      });
+      
+      return {
+        total,
+        oaCount,
+        oaPct: total > 0 ? (oaCount / total) * 100 : 0,
+        totalCitations,
+        avgCitations: total > 0 ? totalCitations / total : 0,
+        apcTotal: apcTotal / 1000
+      };
+    }
+
+    function updateCards(metrics) {
+      document.getElementById('cards').innerHTML = `
+        <div class="card"><h3>📚 Total Works</h3><div style="font-size:2.5rem;font-weight:bold;">${metrics.total.toLocaleString()}</div></div>
+        <div class="card"><h3>🔓 Open Access</h3><div style="font-size:2.5rem;font-weight:bold;">${metrics.oaCount.toLocaleString()}</div><div>${metrics.oaPct.toFixed(1)}%</div></div>
+        <div class="card"><h3>💰 Est. APCs</h3><div style="font-size:2.5rem;font-weight:bold;">$${metrics.apcTotal.toLocaleString('en-US', {maximumFractionDigits:0})}K</div></div>
+        <div class="card"><h3>📊 Avg Citations</h3><div style="font-size:2.5rem;font-weight:bold;">${metrics.avgCitations.toFixed(1)}</div></div>
+        <div class="card"><h3>📈 Total Citations</h3><div style="font-size:2.5rem;font-weight:bold;">${metrics.totalCitations.toLocaleString()}</div></div>
+      `;
+      document.getElementById('cards').style.display = 'grid';
+    }
+
+    function updateTrendsChart(works) {
+      const yearly = {};
+      works.forEach(work => {
+        const year = work.publication_year;
+        if (year) yearly[year] = (yearly[year] || 0) + 1;
+      });
+      
+      const sortedYears = Object.keys(yearly).sort((a,b)=>a-b);
+      const labels = sortedYears;
+      const data = sortedYears.map(y => yearly[y]);
+      
+      const ctx = document.getElementById('trendsChart');
+      if (trendsChart) trendsChart.destroy();
+      trendsChart = new Chart(ctx, {
+        type: 'line',
+        data: {
+          labels,
+          datasets: [{
+            label: 'Publications',
+            data,
+            borderColor: '#1f77b4',
+            backgroundColor: 'rgba(31, 119, 180, 0.1)',
+            fill: true,
+            tension: 0.4
+          }]
+        },
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          scales: { y: { beginAtZero: true } }
+        }
+      });
+      document.querySelector('.chart-row').style.display = 'grid';
+    }
+
+    function updateOAPie(works) {
+      const oaStatus = { gold: 0, hybrid: 0, bronze: 0, green: 0, closed: 0 };
+      
+      works.forEach(work => {
+        const status = work.is_oa ? (work.open_access?.oa_status || 'green') : 'closed';
+        oaStatus[status]++;
+      });
+      
+      const ctx = document.getElementById('oaChart');
+      if (oaChart) oaChart.destroy();
+      oaChart = new Chart(ctx, {
+        type: 'doughnut',
+        data: {
+          labels: Object.keys(oaStatus).filter(k => oaStatus[k] > 0),
+          datasets: [{
+            data: Object.values(oaStatus).filter((v,i) => oaStatus[Object.keys(oaStatus)[i]] > 0),
+            backgroundColor: ['#ffd700', '#ff8c00', '#cd853f', '#90ee90', '#d3d3d3']
+          }]
+        },
+        options: {
+          responsive: try,
+          maintainAspectRatio: false,
+          plugins: { legend: { position: 'bottom' } }
+        }
+      });
+    }
+
+    function updateDomains(works) {
+      const counts = {};
+      works.forEach(work => {
+        (work.concepts || []).slice(0, 10).forEach(c => {
+          if (c.level >= 0 && c.level <= 2) {
+            const name = c.display_name;
+            counts[name] = (counts[name] || 0) + 1;
+          }
+        });
+      });
+      
+      const topDomains = Object.entries(counts
