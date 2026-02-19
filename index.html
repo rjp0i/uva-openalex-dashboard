@@ -100,7 +100,8 @@
     const BASE_URL = "https://api.openalex.org";
     let trendsChart = null;
     let oaChart = null;
-
+    let sortedJournals = [];
+    
     async function loadData() {
       const statusEl = document.getElementById('status');
       const debugEl = document.getElementById('debug');
@@ -113,7 +114,7 @@
 
       const filter = `institutions.ror:${UVA_ROR},from_publication_date:${startYear}-01-01,to_publication_date:${endYear}-12-31`;
       const url = `${BASE_URL}/works?filter=${encodeURIComponent(filter)}&per-page=100&sort=cited_by_count:desc`;
-
+      
       debugEl.textContent = 'API: ' + url;
 
       try {
@@ -138,6 +139,8 @@
         updateWorksTable(works);
         updateFunders(works);
         updateDomains(works);
+        sortedJournals = updateJournalsChart(works);
+        console.log('Journals:', sortedJournals);
         
         statusEl.textContent = `Loaded ${works.length} works`;
 
@@ -302,17 +305,9 @@
        .slice(0, 10);
       return sorted;
     }
-       const [sortedJournals, setSortedJournals] = useState([]);
-  
-  useEffect(() => {
-    if (works.length > 0) {
-      const sortedJournalsData = updateJournalsChart(works);
-      console.log('Processed journals:', sortedJournalsData);
-      setSortedJournals(sortedJournalsData);  // Make 'sorted' accessible
-    }
-  }, [works]);
-
-
+ 
+ 
+}
     window.addEventListener('load', () => {
       setTimeout(loadData, 500);
     });
