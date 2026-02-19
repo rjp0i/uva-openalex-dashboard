@@ -307,9 +307,11 @@
      return sorted;
     }
  function updateJournalsChartDisplay() {
+  console.log('🎯 Chart function called, sortedJournals:', sortedJournals);
   if (sortedJournals.length === 0) return;
   
   const ctx = document.getElementById('journalsChart').getContext('2d');
+  console.log('🎯 Canvas found:', ctx);  // ADD THIS
   if (window.journalsChart) window.journalsChart.destroy();
   
   window.journalsChart = new Chart(ctx, {
