@@ -122,4 +122,74 @@
 
     function updateCards(m) {
       document.getElementById('cards').innerHTML = `
-        <div class="card"><h3>📚 Works</h3><div style="font-size:2.5rem;font-weight:bold;">${m.total.toLocaleString(
+        <div class="card"><h3>📚 Works</h3><div style="font-size:2.5rem;font-weight:bold;">${m.total.toLocaleString()}</div></div>
+        <div class="card"><h3>🔓 OA</h3><div style="font-size:2.5rem;font-weight:bold;">${m.oaCount}</div><div>${m.oaPct.toFixed(1)}%</div></div>
+        <div class="card"><h3>💰 APCs</h3><div style="font-size:2.5rem;">$${m.apcTotal.toLocaleString('en-US',{maximumFractionDigits:0})}K</div></div>
+        <div class="card"><h3>📊 Avg Cite</h3><div style="font-size:2.5rem;">${m.avgCitations.toFixed(1)}</div></div>
+      `;
+      document.getElementById('cards').style.display = 'grid';
+    }
+
+    function updateTrendsChart(works) {
+      const yearly = {};
+      works.forEach(w => { if (w.publication_year) yearly[w.publication_year] = (yearly[w.publication_year] || 0) + 1; });
+      const years = Object.keys(yearly).sort((a,b)=>a-b);
+      
+      if (trendsChart) trendsChart.destroy();
+      trendsChart = new Chart(document.getElementById('trendsChart'), {
+        type: 'line',
+        data: { labels: years, datasets: [{label: 'Publications', data: years.map(y=>yearly[y]), borderColor: '#1f77b4', fill: true}] },
+        options: {responsive: true, maintainAspectRatio: false, scales: {y: {beginAtZero: true}}}
+      });
+      document.getElementById('chartsRow').style.display = 'grid';
+    }
+
+    function updateOAPie(works) {
+      const status = {gold:0,hybrid:0,bronze:0,green:0,closed:0};
+      works.forEach(w => status[w.is_oa ? (w.open_access?.oa_status || 'green') : 'closed']++);
+      
+      if (oaChart) oaChart.destroy();
+      oaChart = new Chart(document.getElementById('oaChart'), {
+        type: 'doughnut',
+        data: {
+          labels: Object.keys(status).filter(k=>status[k]>0),
+          datasets: [{data: Object.values(status).filter(v=>v>0), backgroundColor: ['#ffd700','#ff8c00','#cd853f','#90ee90','#d3d3d3']}]
+        },
+        options: {responsive: true, maintainAspectRatio: false}
+      });
+    }
+
+    function updateDomains(works) {
+      const counts = {};
+      works.forEach(w => (w.concepts||[]).forEach(c => {
+        if (c.level <= 2) counts[c.display_name] = (counts[c.display_name]||0) + 1;
+      }));
+      const top = Object.entries(counts).sort(([,a],[,b])=>b-a).slice(0,15);
+      
+      document.getElementById('domainsList').innerHTML = top.map(([name,count]) => 
+        `<div style="display:flex;justify-content:space-between;padding:0.25rem 0;">
+          <span>${name}</span><span>${count}</span>
+        </div>`).join('');
+      document.getElementById('domainsSection').style.display = 'block';
+    }
+
+    function updateRecentTable(works) {
+      const tbody = document.getElementById('recentTbody');
+      tbody.innerHTML = '';
+      works.slice(0,10).forEach(w => {
+        const row = tbody.insertRow();
+        row.innerHTML = `
+          <td><a href="${w.id.replace('https://openalex.org/','https://explore.openalex.org/works/')}" target="_blank">${(w.display_name||'').slice(0,60)}${(w.display_name||'').length>60?'...':''}</a></td>
+          <td>${w.type?.replace('_',' ') || 'Article'}</td>
+          <td>${w.publication_year || 'N/A'}</td>
+          <td>${w.is_oa ? w.open_access?.oa_status?.slice(0,4) || 'OA' : 'Closed'}</td>
+          <td style="font-weight:bold;">${w.cited_by_count || 0}</td>
+        `;
+      });
+      document.getElementById('recentTable').style.display = 'block';
+    }
+
+    window.onload = () => setTimeout(loadData, 500);
+  </script>
+</body>
+</html>
