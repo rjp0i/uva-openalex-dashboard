@@ -144,20 +144,22 @@
       document.getElementById('chartsRow').style.display = 'grid';
     }
 
-    function updateOAPie(works) {
-      const status = {gold:0,hybrid:0,bronze:0,green:0,closed:0};
-      works.forEach(w => status[w.is_oa ? (w.open_access?.oa_status || 'green') : 'closed']++);
-      
-      if (oaChart) oaChart.destroy();
-      oaChart = new Chart(document.getElementById('oaChart'), {
-        type: 'doughnut',
-        data: {
-          labels: Object.keys(status).filter(k=>status[k]>0),
-          datasets: [{data: Object.values(status).filter(v=>v>0), backgroundColor: ['#ffd700','#ff8c00','#cd853f','#90ee90','#d3d3d3']}]
-        },
-        options: {responsive: true, maintainAspectRatio: false}
-      });
-    }
+  function updateOAPie(works) {
+  const status = {gold:0,hybrid:0,bronze:0,green:0,closed:0};
+  works.forEach(w => status[w.is_oa ? (w.open_access?.oa_status || 'green') : 'closed']++);
+  
+  if (oaChart) oaChart.destroy();
+  oaChart = new Chart(document.getElementById('oaChart'), {
+    type: 'doughnut',
+    data: {
+      labels: Object.keys(status).filter(k=>status[k]>0),
+      datasets: [{data: Object.values(status).filter(v=>v>0), backgroundColor: ['#ffd700','#ff8c00','#cd853f','#90ee90','#d3d3d3']}]
+    },
+    options: {responsive: true, maintainAspectRatio: false, plugins: {legend: {position: 'bottom'}}}
+  });
+}
+
+    
 
     function updateDomains(works) {
       const counts = {};
