@@ -109,55 +109,74 @@
     let oaChart = null;
     let sortedJournals = [];
     
-    async function loadData() {
-      const statusEl = document.getElementById('status');
-      const debugEl = document.getElementById('debug');
-      statusEl.textContent = 'Loading...';
-      debugEl.style.display = 'block';
-      debugEl.textContent = '';
+async function loadData() {
+  const statusEl = document.getElementById('status');
+  const debugEl = document.getElementById('debug');
+  statusEl.textContent = 'Loading...';
+  debugEl.style.display = 'block';
+  debugEl.textContent = '';
 
-      const startYear = document.getElementById('startYear').value;
-      const endYear = document.getElementById('endYear').value;
+  const startYear = document.getElementById('startYear').value;
+  const endYear = document.getElementById('endYear').value;
 
-      const filter = `institutions.ror:${UVA_ROR},from_publication_date:${startYear}-01-01,to_publication_date:${endYear}-12-31`;
-      const url = `${BASE_URL}/works?filter=${encodeURIComponent(filter)}&per-page=100&sort=cited_by_count:desc`;
+  const filter = `institutions.ror:${UVA_ROR},from_publication_date:${startYear}-01-01,to_publication_date:${endYear}-12-31`;
+  
+  debugEl.textContent = `Fetching ALL works (${filter})`;
+
+  try {
+    let allWorks = [];
+    let page = 1;
+    let totalPages = 1;
+    
+    // Paginate through ALL results (max 200/page for speed)
+    do {
+      const url = `${BASE_URL}/works?filter=${encodeURIComponent(filter)}&per-page=200&sort=cited_by_count:desc&page=${page}`;
       
-      debugEl.textContent = 'API: ' + url;
-
-      try {
-        const res = await fetch(url);
-        const data = await res.json();
-        const works = data.results || [];
-
-        debugEl.textContent += `\nWorks received: ${works.length}`;
-
-        if (!works.length) {
-          statusEl.textContent = 'No works found for this range';
-          document.getElementById('stats').style.display = 'none';
-          document.getElementById('worksTable').style.display = 'none';
-          if (trendsChart) trendsChart.destroy();
-          if (oaChart) oaChart.destroy();
-          return;
-        }
-
-        updateStats(works);
-        updateTrendsChart(works);
-        updateOAChart(works);
-        updateWorksTable(works);
-        updateFunders(works);
-        updateDomains(works);
-        sortedJournals = updateJournalsChart(works);
-        console.log('Journals:', sortedJournals);
-        updateJournalsChartDisplay();
-        
-        statusEl.textContent = `Loaded ${works.length} works`;
-
-      } catch (e) {
-        console.error(e);
-        debugEl.textContent += `\nError: ${e.message}`;
-        statusEl.textContent = 'Error loading data';
+      debugEl.textContent += `\n📄 Page ${page}: `;
+      const res = await fetch(url);
+      const data = await res.json();
+      
+      const works = data.results || [];
+      allWorks.push(...works);
+      
+      debugEl.textContent += `${works.length} works`;
+      
+      totalPages = Math.ceil(data.page.total_pages || 1);
+      page++;
+      
+      // Rate limiting - pause between pages
+      if (page <= totalPages) {
+        await new Promise(resolve => setTimeout(resolve, 200));
       }
+      
+    } while (page <= totalPages);
+    
+    debugEl.textContent += `\n✅ TOTAL: ${allWorks.length} works loaded!`;
+    
+    if (!allWorks.length) {
+      statusEl.textContent = 'No works found for this range';
+      // ... hide charts
+      return;
     }
+
+    // Process ALL works (not just top 100)
+    updateStats(allWorks);
+    updateTrendsChart(allWorks);
+    updateOAChart(allWorks);
+    updateWorksTable(allWorks.slice(0, 50));  // Show top 50 in table
+    updateFunders(allWorks);
+    updateDomains(allWorks);
+    sortedJournals = updateJournalsChart(allWorks);
+    updateJournalsChartDisplay();
+    
+    statusEl.textContent = `Loaded ${allWorks.length} works`;
+
+  } catch (e) {
+    console.error(e);
+    debugEl.textContent += `\nError: ${e.message}`;
+    statusEl.textContent = 'Error loading data';
+  }
+}
 
     function updateStats(works) {
       const totalWorks = works.length;
