@@ -305,7 +305,36 @@
        .slice(0, 10);
       return sorted;
     }
- 
+ function updateJournalsChartDisplay() {
+  if (sortedJournals.length === 0) return;
+  
+  const ctx = document.getElementById('journalsChart').getContext('2d');
+  if (window.journalsChart) window.journalsChart.destroy();
+  
+  window.journalsChart = new Chart(ctx, {
+    type: 'bar',
+    data: {
+      labels: sortedJournals.map(([venue]) => venue),
+      datasets: [{
+        label: 'Publications',
+        data: sortedJournals.map(([,count]) => count),
+        backgroundColor: 'rgba(54, 162, 235, 0.6)',
+        borderColor: 'rgba(54, 162, 235, 1)',
+        borderWidth: 1
+      }]
+    },
+    options: {
+      responsive: true,
+      plugins: {
+        title: { display: true, text: 'Top 10 Journals' }
+      },
+      scales: {
+        y: { beginAtZero: true }
+      }
+    }
+  });
+}
+
  
 }
     window.addEventListener('load', () => {
