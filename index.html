@@ -141,6 +141,7 @@
         updateDomains(works);
         sortedJournals = updateJournalsChart(works);
         console.log('Journals:', sortedJournals);
+        updateJournalsChartDisplay();
         
         statusEl.textContent = `Loaded ${works.length} works`;
 
