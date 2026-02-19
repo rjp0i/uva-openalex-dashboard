@@ -133,7 +133,7 @@
 
     function updateStats(works) {
       const totalWorks = works.length;
-      const oaWorks = works.filter(w => w.open.access?.is_oa).length;
+      const oaWorks = works.filter(w => w.open_access?.is_oa).length;
       const totalCitations = works.reduce((sum, w) => sum + (w.cited_by_count || 0), 0);
       const avgCitations = totalWorks ? (totalCitations / totalWorks) : 0;
       const apcTotal = works.reduce((sum, w) => {
