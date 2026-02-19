@@ -133,7 +133,14 @@
       works.forEach(work => {
         totalCitations += work.cited_by_count || 0;
         if (work.is_oa) oaCount++;
-      });
+      }
+       let apcTotal = 0;
+       works.forEach(work => {
+       const apc = work.apc_list?.value_usd;
+       if (apc) apcTotal += parseFloat(apc);
+        });
+// Add new card: `${(apcTotal/1000).toFixed(0)}K USD estimated APCs`
+          
       
       const avgCitations = total > 0 ? (totalCitations / total).toFixed(1) : 0;
       const oaPct = total > 0 ? ((oaCount / total) * 100).toFixed(1) : 0;
@@ -191,6 +198,27 @@
       
       document.getElementById('oaChart').style.display = 'block';
     }
+// Add after updateOAPie(), or replace it
+function updateTrendsChart(works) {
+  const yearly = {};
+  works.forEach(work => {
+    const year = work.publication_year;
+    if (year) {
+      yearly[year] = (yearly[year] || 0) + 1;
+    }
+  });
+  
+  const sortedYears = Object.keys(yearly).sort((a,b)=>a-b);
+  const labels = sortedYears;
+  const data = sortedYears.map(y => yearly[y]);
+  
+  // In HTML, change id="oaChart" to id="trendsChart"
+  new Chart(document.getElementById('trendsChart'), {
+    type: 'line',
+    data: { labels, datasets: [{ label: 'Publications', data, borderColor: '#1f77b4', fill: false }] },
+    options: { responsive: true, maintainAspectRatio: false }
+  });
+}
 
     function updateRecentTable(works) {
       const tbody = document.getElementById('recentTbody');
