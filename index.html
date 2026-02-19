@@ -125,37 +125,41 @@ async function loadData() {
 
   try {
     let allWorks = [];
-    let page = 1;
-    let totalPages = 1;
+    let cursor = '*';  // First page cursor
+    let pageCount = 0;
+    const maxPages = 50;  // Safety cap (~10,000 works max)
     
-    // Paginate through ALL results (max 200/page for speed)
-    do {
-      const url = `${BASE_URL}/works?filter=${encodeURIComponent(filter)}&per-page=200&sort=cited_by_count:desc&page=${page}`;
+    // Cursor pagination through ALL results
+    while (cursor && pageCount < maxPages) {
+      const url = `${BASE_URL}/works?filter=${encodeURIComponent(filter)}&per-page=200&sort=cited_by_count:desc&cursor=${cursor}`;
       
-      debugEl.textContent += `\n📄 Page ${page}: `;
+      debugEl.textContent += `\n📄 Page ${++pageCount}: `;
       const res = await fetch(url);
       const data = await res.json();
       
       const works = data.results || [];
       allWorks.push(...works);
       
-      debugEl.textContent += `${works.length} works`;
+      debugEl.textContent += `${works.length} works (total: ${allWorks.length})`;
       
-      totalPages = Math.ceil(data.page.total_pages || 1);
-      page++;
+      // Get next cursor from meta.next_cursor
+      cursor = data.meta?.next_cursor || null;
       
       // Rate limiting - pause between pages
-      if (page <= totalPages) {
+      if (cursor) {
         await new Promise(resolve => setTimeout(resolve, 200));
       }
-      
-    } while (page <= totalPages);
+    }
     
     debugEl.textContent += `\n✅ TOTAL: ${allWorks.length} works loaded!`;
     
     if (!allWorks.length) {
       statusEl.textContent = 'No works found for this range';
-      // ... hide charts
+      document.getElementById('stats').style.display = 'none';
+      document.getElementById('worksTable').style.display = 'none';
+      if (trendsChart) trendsChart.destroy();
+      if (oaChart) oaChart.destroy();
+      if (window.journalsChart) window.journalsChart.destroy();
       return;
     }
 
