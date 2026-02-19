@@ -306,13 +306,18 @@
        .slice(0, 10);
      return sorted;
     }
- function updateJournalsChartDisplay() {
-  console.log('🎯 Chart function called, sortedJournals:', sortedJournals);
+
+    function updateJournalsChartDisplay() {
+  console.log('🎯 Chart function called, sortedJournals:', sortedJournals);  
   if (sortedJournals.length === 0) return;
   
-  const ctx = document.getElementById('journalsChart').getContext('2d');
-  console.log('🎯 Canvas found:', ctx);  // ADD THIS
-  if (window.journalsChart) window.journalsChart.destroy();
+  const canvas = document.getElementById('journalsChart');
+  const ctx = canvas.getContext('2d');
+  
+  // SAFE destroy - only if chart exists AND has destroy method
+  if (window.journalsChart && typeof window.journalsChart.destroy === 'function') {
+    window.journalsChart.destroy();
+  }
   
   window.journalsChart = new Chart(ctx, {
     type: 'bar',
@@ -337,6 +342,7 @@
     }
   });
 }
+
 
     window.addEventListener('load', () => {
       setTimeout(loadData, 500);
