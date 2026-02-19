@@ -31,6 +31,18 @@
   background: #cccccc;
   cursor: not-allowed;
 }
+#workLimit {
+  padding: 8px;
+  border-radius: 4px;
+  border: 1px solid #ccc;
+  background: white;
+  margin-left: 8px;
+}
+
+.controls label {
+  margin-left: 15px;
+  font-weight: 500;
+}
 
     #status { margin-left: 10px; font-weight: 600; }
     .stats-grid { display: grid; grid-template-columns: repeat(auto-fit,minmax(200px,1fr)); gap: 12px; margin: 20px 0; }
@@ -53,6 +65,15 @@
 
   <div class="controls">
     <button id="loadButton" onclick="loadData()">📊 Load Data</button>
+     <label>Limit: 
+    <select id="workLimit">
+      <option value="1000">Fast (1K works)</option>
+      <option value="5000">Balanced (5K works)</option>
+      <option value="10000" selected>Full (10K works)</option>
+      <option value="20000">Max (20K works)</option>
+      <option value="50000">Ultra Max (50K works)</option>
+    </select>
+  </label>
     <label>From year:
       <select id="startYear">
         <option value="2014">2014</option>
@@ -135,6 +156,9 @@ async function loadData() {
   const loadBtn = document.getElementById('loadButton');
   const statusEl = document.getElementById('status');
   const debugEl = document.getElementById('debug');
+  const workLimit = parseInt(document.getElementById('workLimit').value);
+  const maxWorks = Math.min(workLimit, 300 * 200); // Never exceed 60K
+ 
   
   loadBtn.disabled = true;
   loadBtn.textContent = 'Loading...';
@@ -153,7 +177,9 @@ async function loadData() {
     let allWorks = [];
     let cursor = '*';  // First page cursor
     let pageCount = 0;
-    const maxPages = 5;  // Safety cap (~80,000 works max)
+    const maxPages = Math.ceil(workLimit / 200); // Calculate max pages based on user limit
+
+    debugEl.textContent += `\n⚙️ Target: ${workLimit} works max (${maxPages} pages)`;
     
     // Cursor pagination through ALL results
     while (cursor && pageCount < maxPages) {
@@ -165,6 +191,11 @@ async function loadData() {
       
       const works = data.results || [];
       allWorks.push(...works);
+      
+       // Trim if we exceed limit
+      if (allWorks.length > workLimit) {
+        allWorks = allWorks.slice(0, workLimit);
+      }
       
       debugEl.textContent += `${works.length} works (total: ${allWorks.length})`;
       
