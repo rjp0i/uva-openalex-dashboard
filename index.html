@@ -23,14 +23,14 @@
 </head>
 <body>
   <h1>🟠 UVA Publications Dashboard</h1>
-  <p><em>OpenAlex prototype on GitHub Pages • UVA ROR: <a href="https://ror.org/0153tk833" target="_blank">https://ror.org/0153tk833</a></em></p>
+  <p><em>OpenAlex • UVA ROR: <a href="https://ror.org/0153tk833" target="_blank">https://ror.org/0153tk833</a></em></p>
 
   <div class="controls">
-    <label>From year: <select id="startYear">
+    <label>From: <select id="startYear">
       <option value="2020">2020</option><option value="2021">2021</option><option value="2022">2022</option>
       <option value="2023">2023</option><option value="2024" selected>2024</option>
     </select></label>
-    <label>To year: <select id="endYear">
+    <label>To: <select id="endYear">
       <option value="2024">2024</option><option value="2025" selected>2025</option><option value="2026">2026</option>
     </select></label>
     <button onclick="loadData()">🔄 Update</button>
@@ -38,18 +38,29 @@
   </div>
 
   <div id="debug" class="debug" style="display:none;"></div>
+  
   <div id="cards" class="cards" style="display:none;"></div>
 
   <div class="chart-row" style="display:none;" id="chartsRow">
-    <div><h3>📈 Trends</h3><div id="trendsChart" class="chart-container"></div></div>
-    <div><h3>🎨 OA Status</h3><div id="oaChart" class="chart-container"></div></div>
+    <div>
+      <h3>📈 Publication Trends</h3>
+      <!-- FIXED: Actual canvas elements -->
+      <canvas id="trendsChart" class="chart-container"></canvas>
+    </div>
+    <div>
+      <h3>🎨 Open Access Status</h3>
+      <!-- FIXED: Actual canvas elements -->
+      <canvas id="oaChart" class="chart-container"></canvas>
+    </div>
   </div>
 
   <div style="display: grid; grid-template-columns: 1fr 350px; gap: 2rem; margin-top: 2rem;">
     <div id="recentTable" style="display:none;">
-      <h3>📋 Top Works</h3>
-      <table><thead><tr><th>Title</th><th>Type</th><th>Year</th><th>OA</th><th>Cites</th></tr></thead>
-      <tbody id="recentTbody"></tbody></table>
+      <h3>📋 Top 10 Works</h3>
+      <table>
+        <thead><tr><th>Title</th><th>Type</th><th>Year</th><th>OA</th><th>Cites</th></tr></thead>
+        <tbody id="recentTbody"></tbody>
+      </table>
     </div>
     <div id="domainsSection" style="display:none;">
       <h3>🔬 Top Domains</h3>
@@ -57,90 +68,7 @@
     </div>
   </div>
 
-<script>
-console.log('Script starting...');
-
-const UVA_ROR = "https://ror.org/0153tk833";
-const BASE_URL = "https://api.openalex.org";
-let trendsChart = null, oaChart = null;
-
-async function loadData() {
-  console.log('loadData called');
-  
-  try {
-    document.getElementById('debug').style.display = 'block';
-    document.getElementById('debug').innerHTML = 'Loading...';
-    document.body.classList.add('loading');
-    
-    const startYear = document.getElementById('startYear').value;
-    const endYear = document.getElementById('endYear').value;
-    
-    const filter = `institutions.ror:${UVA_ROR},from_publication_date:${startYear}-01-01,to_publication_date:${endYear}-12-31`;
-    const params = new URLSearchParams({filter, 'per-page': 100, sort: 'cited_by_count:desc'});
-    const url = `${BASE_URL}/works?${params}`;
-    
-    console.log('Fetching:', url);
-    document.getElementById('debug').innerHTML = `Fetching ${url.substring(0,80)}...`;
-    
-    const res = await fetch(url);
-    const data = await res.json();
-    const works = data.results || [];
-    
-    console.log('Got', works.length, 'works');
-    document.getElementById('debug').innerHTML += `<br>✅ ${works.length} works loaded`;
-    
-    if (works.length === 0) return;
-    
-    // Update cards first (this works)
-    const total = works.length;
-    let oaCount = 0;
-    works.forEach(w => { if (w.is_oa) oaCount++; });
-    
-    document.getElementById('cards').innerHTML = `
-      <div class="card"><h3>Total Works</h3><div style="font-size:2.5rem;">${total}</div></div>
-      <div class="card"><h3>Open Access</h3><div style="font-size:2.5rem;">${oaCount}</div></div>
-    `;
-    document.getElementById('cards').style.display = 'grid';
-    
-    // Try trends chart
-    console.log('Making trends chart...');
-    try {
-      const yearly = {};
-      works.forEach(w => {
-        if (w.publication_year) yearly[w.publication_year] = (yearly[w.publication_year] || 0) + 1;
-      });
-      console.log('Yearly data:', yearly);
-      
-      if (trendsChart) trendsChart.destroy();
-      trendsChart = new Chart(document.getElementById('trendsChart'), {
-        type: 'line',
-        data: {
-          labels: Object.keys(yearly),
-          datasets: [{label: 'Works', data: Object.values(yearly), borderColor: 'blue', fill: false}]
-        },
-        options: {responsive: true}
-      });
-      document.getElementById('chartsRow').style.display = 'grid';
-      console.log('Trends chart created');
-    } catch(chartErr) {
-      console.error('Trends chart failed:', chartErr);
-      document.getElementById('debug').innerHTML += `<br>❌ Trends chart error: ${chartErr.message}`;
-    }
-    
-    document.body.classList.remove('loading');
-    document.getElementById('status').textContent = `${works.length} works`;
-    
-  } catch(e) {
-    console.error('Main error:', e);
-    document.getElementById('debug').innerHTML += `<br>❌ ${e.message}`;
-  }
-}
-
-window.onload = () => {
-  console.log('Page loaded');
-  setTimeout(loadData, 1000);
-};
-</script>
-
+  <!-- Keep your existing <script> with diagnostics -->
 </body>
+
 </html>
