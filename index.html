@@ -131,6 +131,7 @@
         updateOAChart(works);
         updateWorksTable(works);
         updateFunders(works);
+        updateDomain(works);
         
         statusEl.textContent = `Loaded ${works.length} works`;
 
@@ -270,8 +271,18 @@
           }));
           const top = Object.entries(funders).sort(([,a],[,b])=>b-a).slice(0,10);
           document.getElementById('fundersList').innerHTML = top.map(([n,c])=>`<div>${n}: ${c}</div>`).join('');
-          alert('Funders found: ' + Object.keys(funders).length);
         }
+function updateDomains(works) {
+  const domains = {};
+  works.forEach(w => (w.concepts||[]).forEach(c => {
+    if (c.level >= 0 && c.level <= 2) {
+      const name = c.display_name;
+      domains[name] = (domains[name]||0) + 1;
+    }
+  }));
+  const top = Object.entries(domains).sort(([,a],[,b])=>b-a).slice(0,10);
+  document.getElementById('domainsList').innerHTML = top.map(([n,c])=>`<div>${n}: ${c}</div>`).join('');
+}
 
 
     window.addEventListener('load', () => {
