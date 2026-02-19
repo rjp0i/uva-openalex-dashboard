@@ -3,83 +3,90 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>UVA OpenAlex Dashboard (Fixed)</title>
+  <title>UVA OpenAlex Dashboard</title>
   <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
   <style>
-    body { font-family: -apple-system, BlinkMacSystemFont, sans-serif; margin: 2rem; max-width: 1200px; }
+    body { font-family: -apple-system, BlinkMacSystemFont, sans-serif; margin: 2rem; max-width: 1400px; }
     .cards { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 1rem; margin: 2rem 0; }
-    .card { border: 1px solid #ddd; padding: 1rem; border-radius: 8px; text-align: center; }
-    .controls { margin: 1rem 0; }
-    .chart-container { height: 300px; margin: 1rem 0; }
+    .card { border: 1px solid #ddd; padding: 1rem; border-radius: 8px; text-align: center; background: white; }
+    .controls { margin: 1rem 0; background: #f8f9fa; padding: 1rem; border-radius: 8px; }
+    .chart-row { display: grid; grid-template-columns: 1fr 1fr; gap: 2rem; margin: 2rem 0; }
+    .chart-container { height: 350px; }
     .loading { opacity: 0.5; }
-    select { padding: 0.5rem; margin-right: 1rem; }
+    select, button { padding: 0.5rem 1rem; margin-right: 1rem; border: 1px solid #ddd; border-radius: 4px; }
     table { width: 100%; border-collapse: collapse; margin-top: 1rem; }
-    th, td { border: 1px solid #ddd; padding: 0.5rem; text-align: left; }
-    th { background: #f5f5f5; }
-    .debug { background: #f0f8ff; padding: 1rem; margin: 1rem 0; font-family: monospace; font-size: 0.9rem; }
+    th, td { border: 1px solid #ddd; padding: 0.75rem; text-align: left; }
+    th { background: #f5f5f5; font-weight: 600; }
+    .debug { background: #f0f8ff; padding: 1rem; margin: 1rem 0; font-family: monospace; font-size: 0.9rem; border-radius: 4px; }
+    .domains-list { background: white; border: 1px solid #ddd; border-radius: 8px; padding: 1rem; max-height: 300px; overflow-y: auto; }
   </style>
 </head>
 <body>
-  <h1>UVA Publications Dashboard</h1>
-  <p><em>OpenAlex prototype on GitHub Pages. UVA ROR: <a href="https://ror.org/0153tk833" target="_blank">https://ror.org/0153tk833</a></em></p>
+  <h1>🟠 UVA Publications Dashboard</h1>
+  <p><em>OpenAlex prototype on GitHub Pages • UVA ROR: <a href="https://ror.org/0153tk833" target="_blank">https://ror.org/0153tk833</a></em></p>
 
   <div class="controls">
     <label>From year: <select id="startYear">
-      <option value="2020">2020</option>
-      <option value="2021">2021</option>
-      <option value="2022">2022</option>
-      <option value="2023">2023</option>
-      <option value="2024" selected>2024</option>
-      <option value="2025">2025</option>
+      <option value="2018">2018</option><option value="2019">2019</option><option value="2020">2020</option>
+      <option value="2021">2021</option><option value="2022">2022</option><option value="2023">2023</option>
+      <option value="2024" selected>2024</option><option value="2025">2025</option>
     </select></label>
     
     <label>To year: <select id="endYear">
-      <option value="2024">2024</option>
-      <option value="2025" selected>2025</option>
-      <option value="2026">2026</option>
+      <option value="2024">2024</option><option value="2025" selected>2025</option><option value="2026">2026</option>
     </select></label>
     
-    <button onclick="loadData()">Update</button>
+    <button onclick="loadData()">🔄 Update Data</button>
+    <span id="status"></span>
   </div>
 
   <div id="debug" class="debug" style="display:none;"></div>
 
   <div id="cards" class="cards" style="display:none;"></div>
 
-  <div id="oaChart" class="chart-container" style="display:none;"></div>
+  <div class="chart-row">
+    <div>
+      <h3>📈 Publication Trends</h3>
+      <div id="trendsChart" class="chart-container"></div>
+    </div>
+    <div>
+      <h3>🎨 Open Access Status</h3>
+      <div id="oaChart" class="chart-container"></div>
+    </div>
+  </div>
 
-  <div id="recentTable" style="display:none;">
-    <h2>Top 10 Most Cited Recent Works</h2>
-    <table>
-      <thead>
-        <tr>
-          <th>Title</th>
-          <th>Type</th>
-          <th>Year</th>
-          <th>OA Status</th>
-          <th>Citations</th>
-        </tr>
-      </thead>
-      <tbody id="recentTbody"></tbody>
-    </table>
+  <div style="display: grid; grid-template-columns: 1fr 350px; gap: 2rem;">
+    <div id="recentTable" style="display:none;">
+      <h3>📋 Top 10 Most Cited Works</h3>
+      <table>
+        <thead><tr><th>Title</th><th>Type</th><th>Year</th><th>OA</th><th>Cites</th></tr></thead>
+        <tbody id="recentTbody"></tbody>
+      </table>
+    </div>
+    
+    <div id="domainsSection" style="display:none;">
+      <h3>🔬 Top Research Domains</h3>
+      <div id="domainsList" class="domains-list"></div>
+    </div>
   </div>
 
   <script>
     const UVA_ROR = "https://ror.org/0153tk833";
     const BASE_URL = "https://api.openalex.org";
-    let oaChart = null;
+    let trendsChart = null, oaChart = null;
 
     async function loadData() {
       const debugDiv = document.getElementById('debug');
+      const statusEl = document.getElementById('status');
+      statusEl.textContent = 'Loading...';
       debugDiv.style.display = 'block';
-      debugDiv.innerHTML = 'Loading...';
+      debugDiv.innerHTML = 'Fetching UVA works...';
       
       document.body.classList.add('loading');
       
       const startYear = document.getElementById('startYear').value;
       const endYear = document.getElementById('endYear').value;
       
-      // Build filter manually to avoid encoding issues
       const filterParts = [
         `institutions.ror:${UVA_ROR}`,
         `from_publication_date:${startYear}-01-01`,
@@ -89,160 +96,34 @@
       
       const params = new URLSearchParams({
         filter: filter,
-        'per-page': 100,  // Use per-page param
+        'per-page': 200,
         sort: 'cited_by_count:desc'
       });
       
       const url = `${BASE_URL}/works?${params}`;
       
-      debugDiv.innerHTML = `<strong>API URL:</strong> ${url}<br>Filter: ${filter}`;
+      debugDiv.innerHTML = `📡 API: ${url}`;
       
       try {
         const response = await fetch(url);
-        debugDiv.innerHTML += `<br><strong>Status:</strong> ${response.status} ${response.statusText}`;
+        debugDiv.innerHTML += `<br>✅ Status: ${response.status}`;
         
-        if (!response.ok) {
-          throw new Error(`HTTP ${response.status}: ${response.statusText}`);
-        }
+        if (!response.ok) throw new Error(`HTTP ${response.status}`);
         
         const data = await response.json();
-        debugDiv.innerHTML += `<br><strong>Results:</strong> ${data.meta?.count || 0} total, ${data.results?.length || 0} returned`;
-        
         const works = data.results || [];
+        debugDiv.innerHTML += `<br>📊 ${works.length} works loaded`;
+        
         if (works.length === 0) {
-          debugDiv.innerHTML += '<br><em>No works found for this date range</em>';
+          statusEl.textContent = 'No works found';
+          return;
         }
         
-        updateMetrics(works);
+        const metrics = computeMetrics(works);
+        updateCards(metrics);
+        updateTrendsChart(works);
         updateOAPie(works);
         updateRecentTable(works.slice(0, 10));
+        updateDomains(works);
         
-      } catch (error) {
-        debugDiv.innerHTML += `<br><strong>Error:</strong> ${error.message}`;
-        console.error('Full error:', error);
-      }
-      
-      document.body.classList.remove('loading');
-    }
-
-    function updateMetrics(works) {
-      const total = works.length;
-      let totalCitations = 0;
-      let oaCount = 0;
-      
-      works.forEach(work => {
-        totalCitations += work.cited_by_count || 0;
-        if (work.is_oa) oaCount++;
-      }
-       let apcTotal = 0;
-       works.forEach(work => {
-       const apc = work.apc_list?.value_usd;
-       if (apc) apcTotal += parseFloat(apc);
-        });
-// Add new card: `${(apcTotal/1000).toFixed(0)}K USD estimated APCs`
-          
-      
-      const avgCitations = total > 0 ? (totalCitations / total).toFixed(1) : 0;
-      const oaPct = total > 0 ? ((oaCount / total) * 100).toFixed(1) : 0;
-      
-      // Clear and rebuild cards
-      const cardsDiv = document.getElementById('cards');
-      cardsDiv.innerHTML = `
-        <div class="card">
-          <h3>Total Works</h3>
-          <div style="font-size: 2rem; font-weight: bold;">${total.toLocaleString()}</div>
-        </div>
-        <div class="card">
-          <h3>Open Access</h3>
-          <div style="font-size: 2rem; font-weight: bold;">${oaCount.toLocaleString()}</div>
-          <span>(${oaPct}%)</span>
-        </div>
-        <div class="card">
-          <h3>Total Citations</h3>
-          <div style="font-size: 2rem; font-weight: bold;">${totalCitations.toLocaleString()}</div>
-        </div>
-        <div class="card">
-          <h3>Avg Citations</h3>
-          <div style="font-size: 2rem; font-weight: bold;">${avgCitations}</div>
-        </div>
-      `;
-      cardsDiv.style.display = 'grid';
-    }
-
-    function updateOAPie(works) {
-      const oaStatus = { gold: 0, hybrid: 0, bronze: 0, green: 0, closed: 0 };
-      
-      works.forEach(work => {
-        const status = work.is_oa ? (work.open_access?.oa_status || 'green') : 'closed';
-        oaStatus[status]++;
-      });
-      
-      const ctx = document.getElementById('oaChart');
-      if (oaChart) oaChart.destroy();
-      
-      new Chart(ctx, {
-        type: 'doughnut',
-        data: {
-          labels: Object.keys(oaStatus).filter(k => oaStatus[k] > 0),
-          datasets: [{
-            data: Object.values(oaStatus).filter((v,i) => Object.keys(oaStatus)[i] !== 'closed' || v > 0),
-            backgroundColor: ['#ffd700', '#ff8c00', '#cd853f', '#90ee90', '#d3d3d3']
-          }]
-        },
-        options: {
-          responsive: true,
-          maintainAspectRatio: false,
-          plugins: { legend: { position: 'bottom' } }
-        }
-      });
-      
-      document.getElementById('oaChart').style.display = 'block';
-    }
-// Add after updateOAPie(), or replace it
-function updateTrendsChart(works) {
-  const yearly = {};
-  works.forEach(work => {
-    const year = work.publication_year;
-    if (year) {
-      yearly[year] = (yearly[year] || 0) + 1;
-    }
-  });
-  
-  const sortedYears = Object.keys(yearly).sort((a,b)=>a-b);
-  const labels = sortedYears;
-  const data = sortedYears.map(y => yearly[y]);
-  
-  // In HTML, change id="oaChart" to id="trendsChart"
-  new Chart(document.getElementById('trendsChart'), {
-    type: 'line',
-    data: { labels, datasets: [{ label: 'Publications', data, borderColor: '#1f77b4', fill: false }] },
-    options: { responsive: true, maintainAspectRatio: false }
-  });
-}
-
-    function updateRecentTable(works) {
-      const tbody = document.getElementById('recentTbody');
-      tbody.innerHTML = '';
-      
-      works.forEach(work => {
-        const row = tbody.insertRow();
-        const title = work.display_name?.slice(0, 80) + (work.display_name?.length > 80 ? '...' : '');
-        const exploreUrl = work.id.replace('https://openalex.org/', 'https://explore.openalex.org/works/');
-        
-        row.innerHTML = `
-          <td><a href="${exploreUrl}" target="_blank">${title}</a></td>
-          <td>${work.type || 'article'}</td>
-          <td>${work.publication_year || 'N/A'}</td>
-          <td>${work.is_oa ? (work.open_access?.oa_status || 'OA') : 'Closed'}</td>
-          <td>${work.cited_by_count || 0}</td>
-        `;
-      });
-      
-      document.getElementById('recentTable').style.display = 'block';
-    }
-
-    // Auto-load on page load
-    window.onload = () => setTimeout(loadData, 500);
-  </script>
-</body>
-</html>
+        statusEl.textContent = `Updated: ${works.length} works (${metri
