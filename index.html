@@ -22,53 +22,97 @@
   </style>
 </head>
 <body>
+  <!-- ALL YOUR HTML CONTENT HERE (controls, cards, canvas elements, etc.) -->
   <h1>🟠 UVA Publications Dashboard</h1>
-  <p><em>OpenAlex • UVA ROR: <a href="https://ror.org/0153tk833" target="_blank">https://ror.org/0153tk833</a></em></p>
+  <p><em>OpenAlex • UVA ROR: <a href="https://ror.org/0153tk833">https://ror.org/0153tk833</a></em></p>
 
   <div class="controls">
     <label>From: <select id="startYear">
-      <option value="2020">2020</option><option value="2021">2021</option><option value="2022">2022</option>
-      <option value="2023">2023</option><option value="2024" selected>2024</option>
+      <option value="2020">2020</option><option value="2024" selected>2024</option>
     </select></label>
     <label>To: <select id="endYear">
-      <option value="2024">2024</option><option value="2025" selected>2025</option><option value="2026">2026</option>
+      <option value="2025" selected>2025</option><option value="2026">2026</option>
     </select></label>
     <button onclick="loadData()">🔄 Update</button>
     <span id="status"></span>
   </div>
 
   <div id="debug" class="debug" style="display:none;"></div>
-  
   <div id="cards" class="cards" style="display:none;"></div>
 
   <div class="chart-row" style="display:none;" id="chartsRow">
-    <div>
-      <h3>📈 Publication Trends</h3>
-      <!-- FIXED: Actual canvas elements -->
-      <canvas id="trendsChart" class="chart-container"></canvas>
-    </div>
-    <div>
-      <h3>🎨 Open Access Status</h3>
-      <!-- FIXED: Actual canvas elements -->
-      <canvas id="oaChart" class="chart-container"></canvas>
-    </div>
+    <div><h3>📈 Trends</h3><canvas id="trendsChart" class="chart-container"></canvas></div>
+    <div><h3>🎨 OA Status</h3><canvas id="oaChart" class="chart-container"></canvas></div>
   </div>
 
-  <div style="display: grid; grid-template-columns: 1fr 350px; gap: 2rem; margin-top: 2rem;">
-    <div id="recentTable" style="display:none;">
-      <h3>📋 Top 10 Works</h3>
-      <table>
-        <thead><tr><th>Title</th><th>Type</th><th>Year</th><th>OA</th><th>Cites</th></tr></thead>
-        <tbody id="recentTbody"></tbody>
-      </table>
-    </div>
-    <div id="domainsSection" style="display:none;">
-      <h3>🔬 Top Domains</h3>
-      <div id="domainsList" class="domains-list"></div>
-    </div>
-  </div>
+  <!-- Table and domains sections here too -->
 
-  <!-- Keep your existing <script> with diagnostics -->
+  <!-- SCRIPT MUST BE LAST BEFORE </body> -->
+  <script>
+  const UVA_ROR = "https://ror.org/0153tk833";
+  const BASE_URL = "https://api.openalex.org";
+  let trendsChart = null, oaChart = null;
+
+  async function loadData() {
+    document.getElementById('debug').style.display = 'block';
+    document.getElementById('debug').innerHTML = 'Loading...';
+    document.body.classList.add('loading');
+
+    const startYear = document.getElementById('startYear').value;
+    const endYear = document.getElementById('endYear').value;
+    
+    const filter = `institutions.ror:${UVA_ROR},from_publication_date:${startYear}-01-01,to_publication_date:${endYear}-12-31`;
+    const url = `${BASE_URL}/works?filter=${encodeURIComponent(filter)}&per-page=100&sort=cited_by_count:desc`;
+    
+    const res = await fetch(url);
+    const data = await res.json();
+    const works = data.results || [];
+    
+    document.getElementById('debug').innerHTML += `<br>${works.length} works`;
+
+    // Cards
+    const total = works.length;
+    let oa = 0;
+    works.forEach(w => { if (w.is_oa) oa++; });
+    
+    document.getElementById('cards').innerHTML = `
+      <div class="card"><h3>Works</h3><div style="font-size:2.5rem;">${total}</div></div>
+      <div class="card"><h3>OA</h3><div style="font-size:2.5rem;">${oa}</div></div>
+    `;
+    document.getElementById('cards').style.display = 'grid';
+
+    // Charts (with canvas check)
+    const trendsCanvas = document.getElementById('trendsChart');
+    const oaCanvas = document.getElementById('oaChart');
+    
+    if (trendsCanvas) {
+      const yearly = {};
+      works.forEach(w => { if (w.publication_year) yearly[w.publication_year] = (yearly[w.publication_year] || 0) + 1; });
+      if (trendsChart) trendsChart.destroy();
+      trendsChart = new Chart(trendsCanvas, {
+        type: 'line',
+        data: { labels: Object.keys(yearly).sort((a,b)=>a-b), datasets: [{label: 'Publications', data: Object.values(yearly), borderColor: 'blue'}] },
+        options: {responsive: true, maintainAspectRatio: false}
+      });
+      document.getElementById('chartsRow').style.display = 'grid';
+    }
+
+    if (oaCanvas) {
+      const status = {gold:0,hybrid:0,bronze:0,green:0,closed:0};
+      works.forEach(w => status[w.is_oa ? (w.open_access?.oa_status || 'green') : 'closed']++);
+      if (oaChart) oaChart.destroy();
+      oaChart = new Chart(oaCanvas, {
+        type: 'doughnut',
+        data: { labels: Object.keys(status).filter(k=>status[k]>0), datasets: [{data: Object.values(status).filter(v=>v>0), backgroundColor: ['gold','orange','brown','lightgreen','grey']}] },
+        options: {responsive: true, maintainAspectRatio: false}
+      });
+    }
+    
+    document.body.classList.remove('loading');
+    document.getElementById('status').textContent = `${works.length} works loaded`;
+  }
+
+  window.onload = () => setTimeout(loadData, 1000);
+  </script>
 </body>
-
 </html>
