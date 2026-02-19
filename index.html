@@ -76,7 +76,10 @@
     <div class="chart-title">📚 Top Journals</div>
     <canvas id="journalsChart"></canvas>
   </div
-
+  <div class="chart-box">
+    <div class="chart-title">💰 Top Funders</div>
+    <canvas id="fundersChart"></canvas>
+  </div>
   <div style="margin: 30px 0;">
     <h3>💰 Top Funding Agencies</h3>
     <div id="fundersList" style="background: #f9f9f9; padding: 15px; border-radius: 8px; max-height: 200px; overflow-y: auto;"></div>
@@ -173,6 +176,8 @@ async function loadData() {
     updateDomains(allWorks);
     sortedJournals = updateJournalsChart(allWorks);
     updateJournalsChartDisplay();
+    sortedFunders = updateFunders(allWorks); 
+    updateFundersChartDisplay(); 
     
     statusEl.textContent = `Loaded ${allWorks.length} works`;
 
@@ -410,6 +415,48 @@ function updateFunders(works) {
     .slice(0, 10);
   
   return sortedFunders;
+}
+
+function updateFundersChartDisplay() {
+  if (sortedFunders.length === 0) return;
+  
+  const canvas = document.getElementById('fundersChart');
+  if (!canvas) return;
+  
+  const ctx = canvas.getContext('2d');
+  
+  // Safe destroy
+  if (window.fundersChart && typeof window.fundersChart.destroy === 'function') {
+    try {
+      window.fundersChart.destroy();
+    } catch (e) {
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
+    }
+  }
+  
+  window.fundersChart = new Chart(ctx, {
+    type: 'bar',
+    data: {
+      labels: sortedFunders.map(([funder]) => funder),
+      datasets: [{
+        label: 'Funded Publications',
+        data: sortedFunders.map(([,count]) => count),
+        backgroundColor: 'rgba(75, 192, 192, 0.6)',
+        borderColor: 'rgba(75, 192, 192, 1)',
+        borderWidth: 1
+      }]
+    },
+    options: {
+      responsive: true,
+      maintainAspectRatio: false,
+      plugins: {
+        title: { display: true, text: 'Top 10 Funders' }
+      },
+      scales: {
+        y: { beginAtZero: true }
+      }
+    }
+  });
 }
 
 
