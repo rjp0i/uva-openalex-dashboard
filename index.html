@@ -355,20 +355,36 @@ async function loadData() {
       document.getElementById('domainsList').innerHTML = top.map(([n,c])=>`<div>${n}: ${c}</div>`).join('');
     }
 
-    function updateJournalsChart(works) {
-      const journals = {};
-      works.forEach(w => {
-      const venue = w.host_venue?.display_name || 
-              w.primary_location?.source?.display_name || 
-              w.primary_location?.source?.id?.split('/').pop()?.slice(0,20) || 
-              'Unknown Journal';
-        journals[venue] = (journals[venue] || 0) + 1;
-     });
-     const sorted = Object.entries(journals)
-       .sort(([,a], [,b]) => b - a)
-       .slice(0, 10);
-     return sorted;
+function updateJournalsChart(works) {
+  const journals = {};
+  works.forEach(w => {
+    let venue = w.host_venue?.display_name;
+    
+    // Fallback 1: Primary location source
+    if (!venue && w.primary_location?.source) {
+      venue = w.primary_location.source.display_name || 
+              w.primary_location.source.id?.split('/').pop()?.slice(0,25);
     }
+    
+    // Fallback 2: First ISSN
+    if (!venue && w.issn?.[0]) {
+      venue = `ISSN:${w.issn[0]}`;
+    }
+    
+    // Fallback 3: Concepts (subject areas)
+    if (!venue && w.concepts?.[0]) {
+      venue = `Topic:${w.concepts[0].display_name?.slice(0,20)}`;
+    }
+    
+    venue = venue || 'Unknown Journal';
+    journals[venue] = (journals[venue] || 0) + 1;
+  });
+  
+  return Object.entries(journals)
+    .sort(([,a], [,b]) => b - a)
+    .slice(0, 10);
+}
+
 
 function updateJournalsChartDisplay() {
   console.log('🎯 Chart function called, sortedJournals:', sortedJournals);  
@@ -394,16 +410,24 @@ function updateJournalsChartDisplay() {
   }
   
   // Create new chart
-  window.journalsChart = new Chart(ctx, {
-    type: 'bar',
-    data: {
-      labels: sortedJournals.map(([venue]) => venue),
-      datasets: [{
-        label: 'Publications',
-        data: sortedJournals.map(([,count]) => count),
-        backgroundColor: 'rgba(54, 162, 235, 0.6)',
-        borderColor: 'rgba(54, 162, 235, 1)',
-        borderWidth: 1
+window.journalsChart = new Chart(ctx, {
+  type: 'bar',
+  data: {
+    labels: sortedJournals.map(([venue]) => venue),
+    datasets: [{
+      label: 'Publications',
+      data: sortedJournals.map(([,count]) => count),
+      backgroundColor: sortedJournals.map(([venue]) => 
+        venue === 'Unknown Journal' ? 
+          'rgba(255, 193, 7, 0.6)' :  // 🟡 Yellow for Unknown
+          'rgba(54, 162, 235, 0.6)'   // 🔵 Blue for real journals
+      ),
+      borderColor: sortedJournals.map(([venue]) => 
+        venue === 'Unknown Journal' ? 
+          'rgba(255, 193, 7, 1)' : 
+          'rgba(54, 162, 235, 1)'
+      ),
+      borderWidth: 1
       }]
     },
     options: {
