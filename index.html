@@ -6,113 +6,174 @@
   <title>UVA OpenAlex Dashboard</title>
   <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
   <style>
-    body { font-family: -apple-system, BlinkMacSystemFont, sans-serif; margin: 2rem; max-width: 1400px; }
-    .cards { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 1rem; margin: 2rem 0; }
-    .card { border: 1px solid #ddd; padding: 1rem; border-radius: 8px; text-align: center; background: white; }
-    .controls { margin: 1rem 0; background: #f8f9fa; padding: 1rem; border-radius: 8px; }
-    .chart-row { display: grid; grid-template-columns: 1fr 1fr; gap: 2rem; margin: 2rem 0; }
-    .chart-container { height: 350px; }
-    .loading { opacity: 0.5; }
-    select, button { padding: 0.5rem 1rem; margin-right: 1rem; border: 1px solid #ddd; border-radius: 4px; }
-    table { width: 100%; border-collapse: collapse; margin-top: 1rem; }
-    th, td { border: 1px solid #ddd; padding: 0.75rem; text-align: left; }
+    body { font-family: Arial, sans-serif; margin: 20px; max-width: 1200px; }
+    .container { margin-bottom: 20px; }
+    .stats-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 15px; margin: 20px 0; }
+    .stat-card { border: 1px solid #ddd; padding: 20px; text-align: center; border-radius: 8px; background: #f9f9f9; }
+    .stat-number { font-size: 2.5em; font-weight: bold; color: #2c5aa0; margin: 10px 0; }
+    .controls { background: #f0f8ff; padding: 15px; border-radius: 8px; margin: 20px 0; }
+    select, button { padding: 8px 12px; margin: 0 10px 0 0; border: 1px solid #ccc; border-radius: 4px; }
+    button { background: #2c5aa0; color: white; cursor: pointer; }
+    button:hover { background: #1e3f70; }
+    .chart-box { border: 1px solid #ddd; border-radius: 8px; padding: 20px; margin: 20px 0; background: white; }
+    .chart-title { text-align: center; margin-bottom: 15px; color: #333; }
+    table { width: 100%; border-collapse: collapse; margin: 20px 0; }
+    th, td { border: 1px solid #ddd; padding: 12px; text-align: left; }
     th { background: #f5f5f5; font-weight: 600; }
-    .debug { background: #f0f8ff; padding: 1rem; margin: 1rem 0; font-family: monospace; font-size: 0.9rem; border-radius: 4px; }
-    .domains-list { background: white; border: 1px solid #ddd; border-radius: 8px; padding: 1rem; max-height: 300px; overflow-y: auto; }
+    .loading { opacity: 0.6; }
   </style>
 </head>
 <body>
-  <!-- ALL YOUR HTML CONTENT HERE (controls, cards, canvas elements, etc.) -->
-  <h1>🟠 UVA Publications Dashboard</h1>
-  <p><em>OpenAlex • UVA ROR: <a href="https://ror.org/0153tk833">https://ror.org/0153tk833</a></em></p>
+  <h1>🟠 UVA OpenAlex Dashboard</h1>
+  <p>OpenAlex data for University of Virginia (ROR: <a href="https://ror.org/0153tk833">https://ror.org/0153tk833</a>)</p>
 
-  <div class="controls">
-    <label>From: <select id="startYear">
-      <option value="2020">2020</option><option value="2024" selected>2024</option>
-    </select></label>
-    <label>To: <select id="endYear">
-      <option value="2025" selected>2025</option><option value="2026">2026</option>
-    </select></label>
-    <button onclick="loadData()">🔄 Update</button>
-    <span id="status"></span>
+  <div class="controls container">
+    <label>From Year: 
+      <select id="startYear">
+        <option value="2020">2020</option>
+        <option value="2021">2021</option>
+        <option value="2022">2022</option>
+        <option value="2023">2023</option>
+        <option value="2024" selected>2024</option>
+      </select>
+    </label>
+    <label>To Year: 
+      <select id="endYear">
+        <option value="2024">2024</option>
+        <option value="2025" selected>2025</option>
+        <option value="2026">2026</option>
+      </select>
+    </label>
+    <button onclick="loadData()">🔄 Load Data</button>
+    <span id="status" style="margin-left: 20px; font-weight: bold;"></span>
   </div>
 
-  <div id="debug" class="debug" style="display:none;"></div>
-  <div id="cards" class="cards" style="display:none;"></div>
+  <div id="stats" class="stats-grid" style="display: none;"></div>
 
-  <div class="chart-row" style="display:none;" id="chartsRow">
-    <div><h3>📈 Trends</h3><canvas id="trendsChart" class="chart-container"></canvas></div>
-    <div><h3>🎨 OA Status</h3><canvas id="oaChart" class="chart-container"></canvas></div>
+  <div class="container">
+    <div class="chart-box" style="display: none;" id="trendsBox">
+      <h3 class="chart-title">📈 Publication Trends</h3>
+      <canvas id="trendsChart" height="300"></canvas>
+    </div>
   </div>
 
-  <!-- Table and domains sections here too -->
+  <div class="container">
+    <table id="worksTable" style="display: none;">
+      <thead>
+        <tr>
+          <th>Title</th>
+          <th>Year</th>
+          <th>OA Status</th>
+          <th>Citations</th>
+        </tr>
+      </thead>
+      <tbody id="worksBody"></tbody>
+    </table>
+  </div>
 
-  <!-- SCRIPT MUST BE LAST BEFORE </body> -->
   <script>
-  const UVA_ROR = "https://ror.org/0153tk833";
-  const BASE_URL = "https://api.openalex.org";
-  let trendsChart = null, oaChart = null;
+    let trendsChart = null;
 
-  async function loadData() {
-    document.getElementById('debug').style.display = 'block';
-    document.getElementById('debug').innerHTML = 'Loading...';
-    document.body.classList.add('loading');
+    async function loadData() {
+      document.body.classList.add('loading');
+      document.getElementById('status').textContent = 'Loading...';
 
-    const startYear = document.getElementById('startYear').value;
-    const endYear = document.getElementById('endYear').value;
-    
-    const filter = `institutions.ror:${UVA_ROR},from_publication_date:${startYear}-01-01,to_publication_date:${endYear}-12-31`;
-    const url = `${BASE_URL}/works?filter=${encodeURIComponent(filter)}&per-page=100&sort=cited_by_count:desc`;
-    
-    const res = await fetch(url);
-    const data = await res.json();
-    const works = data.results || [];
-    
-    document.getElementById('debug').innerHTML += `<br>${works.length} works`;
+      try {
+        const startYear = document.getElementById('startYear').value;
+        const endYear = document.getElementById('endYear').value;
+        
+        const filter = `institutions.ror:https://ror.org/0153tk833,from_publication_date:${startYear}-01-01,to_publication_date:${endYear}-12-31`;
+        const url = `https://api.openalex.org/works?filter=${encodeURIComponent(filter)}&per-page=100&sort=cited_by_count:desc`;
+        
+        const response = await fetch(url);
+        const data = await response.json();
+        const works = data.results || [];
 
-    // Cards
-    const total = works.length;
-    let oa = 0;
-    works.forEach(w => { if (w.is_oa) oa++; });
-    
-    document.getElementById('cards').innerHTML = `
-      <div class="card"><h3>Works</h3><div style="font-size:2.5rem;">${total}</div></div>
-      <div class="card"><h3>OA</h3><div style="font-size:2.5rem;">${oa}</div></div>
-    `;
-    document.getElementById('cards').style.display = 'grid';
+        // Stats cards
+        const totalWorks = works.length;
+        const oaWorks = works.filter(w => w.is_oa).length;
+        const totalCitations = works.reduce((sum, w) => sum + (w.cited_by_count || 0), 0);
+        
+        document.getElementById('stats').innerHTML = `
+          <div class="stat-card">
+            <h3>Total Works</h3>
+            <div class="stat-number">${totalWorks.toLocaleString()}</div>
+          </div>
+          <div class="stat-card">
+            <h3>Open Access</h3>
+            <div class="stat-number">${oaWorks}</div>
+            <small>${((oaWorks/totalWorks)*100 || 0).toFixed(1)}%</small>
+          </div>
+          <div class="stat-card">
+            <h3>Total Citations</h3>
+            <div class="stat-number">${totalCitations.toLocaleString()}</div>
+          </div>
+        `;
+        document.getElementById('stats').style.display = 'grid';
 
-    // Charts (with canvas check)
-    const trendsCanvas = document.getElementById('trendsChart');
-    const oaCanvas = document.getElementById('oaChart');
-    
-    if (trendsCanvas) {
-      const yearly = {};
-      works.forEach(w => { if (w.publication_year) yearly[w.publication_year] = (yearly[w.publication_year] || 0) + 1; });
-      if (trendsChart) trendsChart.destroy();
-      trendsChart = new Chart(trendsCanvas, {
-        type: 'line',
-        data: { labels: Object.keys(yearly).sort((a,b)=>a-b), datasets: [{label: 'Publications', data: Object.values(yearly), borderColor: 'blue'}] },
-        options: {responsive: true, maintainAspectRatio: false}
-      });
-      document.getElementById('chartsRow').style.display = 'grid';
+        // Trends chart
+        const yearlyData = {};
+        works.forEach(work => {
+          const year = work.publication_year;
+          if (year) yearlyData[year] = (yearlyData[year] || 0) + 1;
+        });
+        
+        const years = Object.keys(yearlyData).sort((a, b) => a - b);
+        
+        if (trendsChart) trendsChart.destroy();
+        trendsChart = new Chart(document.getElementById('trendsChart'), {
+          type: 'line',
+          data: {
+            labels: years,
+            datasets: [{
+              label: 'Publications',
+              data: years.map(year => yearlyData[year]),
+              borderColor: '#2c5aa0',
+              backgroundColor: 'rgba(44, 90, 160, 0.1)',
+              fill: true,
+              tension: 0.4
+            }]
+          },
+          options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            scales: {
+              y: { beginAtZero: true }
+            }
+          }
+        });
+        document.getElementById('trendsBox').style.display = 'block';
+
+        // Works table
+        const tbody = document.getElementById('worksBody');
+        tbody.innerHTML = '';
+        works.slice(0, 10).forEach(work => {
+          const row = tbody.insertRow();
+          const title = (work.display_name || 'No title').substring(0, 60) + (work.display_name && work.display_name.length > 60 ? '...' : '');
+          row.innerHTML = `
+            <td><a href="${work.id.replace('https://openalex.org/', 'https://explore.openalex.org/works/')}" target="_blank">${title}</a></td>
+            <td>${work.publication_year || 'N/A'}</td>
+            <td>${work.is_oa ? (work.open_access?.oa_status || 'OA') : 'Closed'}</td>
+            <td style="font-weight: bold;">${work.cited_by_count || 0}</td>
+          `;
+        });
+        document.getElementById('worksTable').style.display = 'table';
+
+        document.getElementById('status').textContent = `Loaded ${totalWorks} UVA works (${oaWorks} OA)`;
+        
+      } catch (error) {
+        document.getElementById('status').textContent = 'Error loading data';
+        console.error('Error:', error);
+      }
+      
+      document.body.classList.remove('loading');
     }
 
-    if (oaCanvas) {
-      const status = {gold:0,hybrid:0,bronze:0,green:0,closed:0};
-      works.forEach(w => status[w.is_oa ? (w.open_access?.oa_status || 'green') : 'closed']++);
-      if (oaChart) oaChart.destroy();
-      oaChart = new Chart(oaCanvas, {
-        type: 'doughnut',
-        data: { labels: Object.keys(status).filter(k=>status[k]>0), datasets: [{data: Object.values(status).filter(v=>v>0), backgroundColor: ['gold','orange','brown','lightgreen','grey']}] },
-        options: {responsive: true, maintainAspectRatio: false}
-      });
-    }
-    
-    document.body.classList.remove('loading');
-    document.getElementById('status').textContent = `${works.length} works loaded`;
-  }
-
-  window.onload = () => setTimeout(loadData, 1000);
+    // Load data on page load
+    window.addEventListener('load', () => {
+      setTimeout(loadData, 500);
+    });
   </script>
 </body>
 </html>
+
