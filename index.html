@@ -299,11 +299,11 @@
       works.forEach(w => {
         const venue = w.host_venue?.display_name || 'Unknown Journal';
         journals[venue] = (journals[venue] || 0) + 1;
-      });
+     });
      const sorted = Object.entries(journals)
        .sort(([,a], [,b]) => b - a)
        .slice(0, 10);
-      return sorted;
+     return sorted;
     }
  function updateJournalsChartDisplay() {
   if (sortedJournals.length === 0) return;
