@@ -307,18 +307,30 @@
      return sorted;
     }
 
-    function updateJournalsChartDisplay() {
+function updateJournalsChartDisplay() {
   console.log('🎯 Chart function called, sortedJournals:', sortedJournals);  
   if (sortedJournals.length === 0) return;
   
   const canvas = document.getElementById('journalsChart');
-  const ctx = canvas.getContext('2d');
-  
-  // SAFE destroy - only if chart exists AND has destroy method
-  if (window.journalsChart && typeof window.journalsChart.destroy === 'function') {
-    window.journalsChart.destroy();
+  if (!canvas) {
+    console.log('❌ Canvas not found');
+    return;
   }
   
+  const ctx = canvas.getContext('2d');
+  
+  // Nuclear option - clear everything and start fresh
+  if (window.journalsChart) {
+    try {
+      window.journalsChart.destroy();
+    } catch (e) {
+      console.log('⚠️ Destroy failed, continuing...');
+      // Canvas might still have old chart - clear it manually
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
+    }
+  }
+  
+  // Create new chart
   window.journalsChart = new Chart(ctx, {
     type: 'bar',
     data: {
@@ -333,6 +345,7 @@
     },
     options: {
       responsive: true,
+      maintainAspectRatio: false,
       plugins: {
         title: { display: true, text: 'Top 10 Journals' }
       },
@@ -341,6 +354,8 @@
       }
     }
   });
+  
+  console.log('✅ Journals chart created');
 }
 
 
