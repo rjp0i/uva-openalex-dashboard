@@ -43,7 +43,11 @@
   margin-left: 15px;
   font-weight: 500;
 }
-
+#institutionSelect {
+  height: 100px;
+  padding: 8px;
+  border-radius: 4px;
+}
     #status { margin-left: 10px; font-weight: 600; }
     .stats-grid { display: grid; grid-template-columns: repeat(auto-fit,minmax(200px,1fr)); gap: 12px; margin: 20px 0; }
     .stat-card { border: 1px solid #ddd; border-radius: 8px; padding: 14px; text-align: center; background: #fafafa; }
@@ -65,6 +69,16 @@
 
   <div class="controls">
     <button id="loadButton" onclick="loadData()">📊 Load Data</button>
+     <label>Institutions (by ROR): 
+    <select id="institutionSelect" multiple>
+      <option value="https://ror.org/0153tk833" selected>UVA Main</option>
+      <option value="https://ror.org/00wn7d965">UVA Health System</option>
+      <option value="https://ror.org/046kb4y45">UVA Medical Center</option>
+      <option value="https://ror.org/02f588d44">UVA Hospital</option>
+      <option value="https://ror.org/01krywm46">UVA Children's Hospital</option>
+      <option value="https://ror.org/04w75nz84">UVA Cancer Center</option>
+    </select>
+  </label>
      <label>Limit: 
     <select id="workLimit">
       <option value="1000">Fast (1K works)</option>
@@ -167,9 +181,20 @@ async function loadData() {
 
   const startYear = document.getElementById('startYear').value;
   const endYear = document.getElementById('endYear').value;
-
-  const filter = `institutions.ror:${UVA_ROR},institutions.ror:https://ror.org/02f588d44,institutions.ror:https://ror.org/00wn7d965,institutions.ror:https://ror.org/046kb4y45,institutions.ror:https://ror.org/01krywm46,institutions.ror:https://ror.org/04w75nz84,from_publication_date:${startYear}-01-01,to_publication_date:${endYear}-12-31`;
-  debugEl.textContent = `Fetching ALL works (${filter})`;
+  const selectedRors = Array.from(document.getElementById('institutionSelect').selectedOptions)
+    .map(option => option.value);
+  
+  if (selectedRors.length === 0) {
+    statusEl.textContent = 'Select at least one institution';
+    return;
+  }
+  
+  // Build filter with multiple RORs
+  const rorFilters = selectedRors.map(ror => `institutions.ror:${ror}`).join(',');
+  const filter = `${rorFilters},from_publication_date:${startYear}-01-01,to_publication_date:${endYear}-12-31`;
+  
+  debugEl.textContent = `Fetching ${selectedRors.length} institutions (${filter})`;
+  
 
   try {
     let allWorks = [];
