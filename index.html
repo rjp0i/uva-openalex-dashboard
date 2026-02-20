@@ -196,7 +196,9 @@ async function loadData() {
   const dateFilter = `from_publication_date:${startYear}-01-01,to_publication_date:${endYear}-12-31`;
 
 // ✅ CRITICAL: Encode each part separately, then combine
-  const filter = `${encodeURIComponent(rorFilter)},${encodeURIComponent(dateFilter)}`;
+  const filter = `${rorFilter},${dateFilter}`;
+  const url = `${BASE_URL}/works?filter=${encodeURIComponent(filter)}&per-page=200`;
+
 
   debugEl.textContent = `RORs: ${selectedRors.length} | Filter: ${rorFilter}`;
 
