@@ -185,16 +185,20 @@ async function loadData() {
     .map(option => option.value);
   
   if (selectedRors.length === 0) {
-    statusEl.textContent = 'Select at least one institution';
+    statusEl.textContent = 'Select at least one organization';
+    loadBtn.disabled = false;
+    loadBtn.textContent = '📊 Load Data';
     return;
   }
   
   // Build filter with multiple RORs
-  const rorFilters = selectedRors.map(ror => `institutions.ror:${ror}`).join('|');
-  const filter = `${rorFilters},from_publication_date:${startYear}-01-01,to_publication_date:${endYear}-12-31`;
-  
-  debugEl.textContent = `Fetching ${selectedRors.length} institutions (${filter})`;
-  
+  const rorFilter = selectedRors.map(ror => `institutions.ror:${ror}`).join('|');
+  const dateFilter = `from_publication_date:${startYear}-01-01,to_publication_date:${endYear}-12-31`;
+
+// ✅ CRITICAL: Encode each part separately, then combine
+  const filter = `${encodeURIComponent(rorFilter)},${encodeURIComponent(dateFilter)}`;
+
+  debugEl.textContent = `RORs: ${selectedRors.length} | Filter: ${rorFilter}`;
 
   try {
     let allWorks = [];
