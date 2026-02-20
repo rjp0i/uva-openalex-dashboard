@@ -171,7 +171,8 @@ async function loadData() {
   const debugEl = document.getElementById('debug');
   const workLimit = parseInt(document.getElementById('workLimit').value);
   const maxWorks = Math.min(workLimit, 300 * 200); // Never exceed 60K
- 
+  console.log('🔍 ROR filter:', filter);
+  console.log('🔍 URL preview:', `${BASE_URL}/works?filter=${encodeURIComponent(filter)}&per-page=200`);
   
   loadBtn.disabled = true;
   loadBtn.textContent = 'Loading...';
