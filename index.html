@@ -190,7 +190,7 @@ async function loadData() {
   }
   
   // Build filter with multiple RORs
-  const rorFilters = selectedRors.map(ror => `institutions.ror:${ror}`).join(',');
+  const rorFilters = selectedRors.map(ror => `institutions.ror:${ror}`).join('|');
   const filter = `${rorFilters},from_publication_date:${startYear}-01-01,to_publication_date:${endYear}-12-31`;
   
   debugEl.textContent = `Fetching ${selectedRors.length} institutions (${filter})`;
