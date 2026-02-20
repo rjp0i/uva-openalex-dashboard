@@ -168,7 +168,6 @@ async function loadData() {
   const startYear = document.getElementById('startYear').value;
   const endYear = document.getElementById('endYear').value;
 
-  const filter = `institutions.ror:${UVA_ROR},from_publication_date:${startYear}-01-01,to_publication_date:${endYear}-12-31`;
   const filter = `institutions.ror:${UVA_ROR},institutions.ror:https://ror.org/02f588d44,institutions.ror:https://ror.org/00wn7d965,institutions.ror:https://ror.org/046kb4y45,institutions.ror:https://ror.org/01krywm46,institutions.ror:https://ror.org/04w75nz84,from_publication_date:${startYear}-01-01,to_publication_date:${endYear}-12-31`;
   debugEl.textContent = `Fetching ALL works (${filter})`;
 
