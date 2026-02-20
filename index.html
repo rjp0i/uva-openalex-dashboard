@@ -171,8 +171,7 @@ async function loadData() {
   const debugEl = document.getElementById('debug');
   const workLimit = parseInt(document.getElementById('workLimit').value);
   const maxWorks = Math.min(workLimit, 300 * 200); // Never exceed 60K
-  console.log('🔍 ROR filter:', filter);
-  console.log('🔍 URL preview:', `${BASE_URL}/works?filter=${encodeURIComponent(filter)}&per-page=200`);
+
   
   loadBtn.disabled = true;
   loadBtn.textContent = 'Loading...';
@@ -208,9 +207,14 @@ async function loadData() {
     const maxPages = Math.ceil(workLimit / 200); // Calculate max pages based on user limit
 
     debugEl.textContent += `\n⚙️ Target: ${workLimit} works max (${maxPages} pages)`;
-    
+
+      console.log('🔍 Raw RORs:', selectedRors);
+      console.log('🔍 ROR filter:', rorFilter);
+      console.log('🔍 Full filter:', filter);
+      console.log('🔍 Encoded URL:',`${BASE_URL}/works?filter=${encodeURIComponent(filter)}&per-page=200`);
     // Cursor pagination through ALL results
     while (cursor && pageCount < maxPages) {
+
       const url = `${BASE_URL}/works?filter=${encodeURIComponent(filter)}&per-page=200&sort=cited_by_count:desc&cursor=${cursor}`;
       
       debugEl.textContent += `\n📄 Page ${++pageCount}: `;
