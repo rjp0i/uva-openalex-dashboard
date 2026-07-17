@@ -192,10 +192,28 @@ async function init() {
   document.getElementById('loadingMsg').style.display = 'none';
   document.getElementById('dashboard').style.display = 'block';
 
-  if (dashboardData.generated_at) {
-    document.getElementById('generatedNote').textContent =
-      'Data generated: ' + new Date(dashboardData.generated_at).toLocaleString();
+  const worksDate = dashboardData.uva_works_retrieved_at
+    ? new Date(dashboardData.uva_works_retrieved_at).toLocaleDateString()
+    : null;
+  const citationsDate = dashboardData.referenced_works_retrieved_at
+    ? new Date(dashboardData.referenced_works_retrieved_at).toLocaleDateString()
+    : null;
+
+  let retrievalNote = '';
+  if (worksDate && citationsDate) {
+    retrievalNote = worksDate === citationsDate
+      ? `OpenAlex data retrieved: ${worksDate}`
+      : `OpenAlex data retrieved: works as of ${worksDate} &middot; citations as of ${citationsDate}`;
+  } else if (worksDate || citationsDate) {
+    retrievalNote = `OpenAlex data retrieved: ${worksDate || citationsDate}`;
   }
+
+  const assembledNote = dashboardData.generated_at
+    ? `Dashboard last assembled: ${new Date(dashboardData.generated_at).toLocaleString()}`
+    : '';
+
+  document.getElementById('generatedNote').innerHTML =
+    [retrievalNote, assembledNote].filter(Boolean).join('<br>');
 
   renderStats(dashboardData.stats);
   renderTrendsChart(dashboardData.trends);
