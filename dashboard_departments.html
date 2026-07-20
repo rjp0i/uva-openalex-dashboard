@@ -143,6 +143,30 @@
         </table>
       </section>
 
+      <section id="booksSection" style="border: 2px solid var(--uva-blue); border-radius: 8px; padding: 20px; background: #fff;">
+        <div class="section-title">Books</div>
+        <p class="section-note">Full monographs only (<code>type == "book"</code> in OpenAlex) -- book CHAPTERS are
+          intentionally grouped with articles/everything else throughout the rest of this view, not shown here,
+          since a chapter is closer in kind to an article than to a standalone book.</p>
+        <div class="stats-grid">
+          <div class="stat-card"><h3>Books Published</h3><div class="stat-number" id="booksCount">0</div></div>
+          <div class="stat-card"><h3>Open Access</h3><div class="stat-number" id="booksOACount">0</div><small id="booksOAPct"></small></div>
+        </div>
+        <div class="charts-row">
+          <div class="chart-box">
+            <div class="chart-title">Top Book Series/Publishers</div>
+            <canvas id="bookSeriesChart"></canvas>
+          </div>
+          <div class="chart-box" style="overflow-y:auto;">
+            <div class="chart-title">Top Cited Books</div>
+            <table id="booksTable" style="font-size:0.85rem;">
+              <thead><tr><th>Title</th><th>Year</th><th>Citations</th></tr></thead>
+              <tbody id="booksTableBody"></tbody>
+            </table>
+          </div>
+        </div>
+      </section>
+
     </div>
   </div>
 
@@ -236,6 +260,7 @@ function renderSelectedUnit() {
   renderBarChart('fundersChart', info.top_funders, '#009FDF');
   renderBarChart('publishersChart', info.top_publishers, '#62BB46');
   renderWorksTable(info.top_cited_works || []);
+  renderBooksSection(info.books);
 }
 
 function renderStats(info) {
@@ -307,6 +332,21 @@ function renderWorksTable(works) {
       <td>${w.year ?? 'N/A'}</td>
       <td>${w.is_oa ? 'Open' : 'Closed'}</td>
       <td style="font-weight:bold;">${w.citations.toLocaleString()}</td>
+    </tr>
+  `).join('');
+}
+
+function renderBooksSection(books) {
+  if (!books) books = { count: 0, oa_count: 0, oa_pct: 0, top_book_series: [], top_cited_books: [] };
+  document.getElementById('booksCount').textContent = books.count.toLocaleString();
+  document.getElementById('booksOACount').textContent = books.oa_count.toLocaleString();
+  document.getElementById('booksOAPct').textContent = books.oa_pct + '%';
+  renderBarChart('bookSeriesChart', books.top_book_series || [], '#EF3F6B');
+  document.getElementById('booksTableBody').innerHTML = (books.top_cited_books || []).map(b => `
+    <tr>
+      <td><a href="${b.url}" target="_blank">${b.title}</a></td>
+      <td>${b.year ?? 'N/A'}</td>
+      <td style="font-weight:bold;">${b.citations.toLocaleString()}</td>
     </tr>
   `).join('');
 }
