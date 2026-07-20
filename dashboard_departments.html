@@ -167,6 +167,8 @@
         </div>
       </section>
 
+      <p class="section-note" id="otherTypesNote" style="text-align:center;"></p>
+
     </div>
   </div>
 
@@ -261,6 +263,7 @@ function renderSelectedUnit() {
   renderBarChart('publishersChart', info.top_publishers, '#62BB46');
   renderWorksTable(info.top_cited_works || []);
   renderBooksSection(info.books);
+  renderOtherTypesNote(info.other_works_count);
 }
 
 function renderStats(info) {
@@ -349,6 +352,13 @@ function renderBooksSection(books) {
       <td style="font-weight:bold;">${b.citations.toLocaleString()}</td>
     </tr>
   `).join('');
+}
+
+function renderOtherTypesNote(otherCount) {
+  document.getElementById('otherTypesNote').textContent =
+    `${(otherCount || 0).toLocaleString()} additional OpenAlex entries credited to this unit are neither ` +
+    `"Articles" (article/review/book-chapter) nor "Books" as defined above -- datasets, dissertations, ` +
+    `editorials, letters, preprints, etc. -- not reflected in any chart above.`;
 }
 
 init();

@@ -171,6 +171,8 @@
       </div>
     </section>
 
+    <p class="section-note" id="otherTypesNote" style="text-align:center;"></p>
+
     <section>
       <div class="section-title">Publishing vs. Citing, by Journal</div>
       <p class="section-note">Every journal UVA authors publish in or cite, side by side &mdash; useful for
@@ -255,6 +257,7 @@ async function init() {
   renderBarChart('subjectSubfieldsChart', dashboardData.top_subject_subfields || [], '#EF3F6B');
   renderWorksTable(dashboardData.top_cited_works);
   renderBooksSection(dashboardData.books);
+  renderOtherTypesNote(dashboardData.other);
 
   setupSubscriptionTable(dashboardData.subscription_summary);
 }
@@ -342,6 +345,16 @@ function renderBooksSection(books) {
       <td style="font-weight:bold;">${b.citations.toLocaleString()}</td>
     </tr>
   `).join('');
+}
+
+function renderOtherTypesNote(other) {
+  if (!other) return;
+  const breakdown = (other.breakdown || []).map(b => `${b.name}: ${b.count.toLocaleString()}`).join(', ');
+  const el = document.getElementById('otherTypesNote');
+  el.textContent = `${other.count.toLocaleString()} additional OpenAlex entries affiliated with UVA are neither ` +
+    `"Articles" (article/review/book-chapter) nor "Books" as defined above -- datasets, dissertations, editorials, ` +
+    `letters, preprints, etc. -- not reflected in any chart on this page.`;
+  el.title = breakdown; // hover for the type-by-type breakdown
 }
 
 function setupSubscriptionTable(rows) {
