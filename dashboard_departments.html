@@ -1,0 +1,231 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<link rel="icon" type="image/x-icon" href="favicon.ico">
+<title>UVA Library — Department &amp; School Breakdown</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Libre+Franklin:wght@400;500;600;700;800&family=Libre+Caslon+Text:ital@0;1&display=swap" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<style>
+  :root {
+    --uva-blue: #232D4B;
+    --uva-orange: #E57200;
+    --uva-cyan: #009FDF;
+    --uva-teal: #25CAD3;
+    --uva-green: #62BB46;
+    --uva-magenta: #EF3F6B;
+    --uva-light-gray: #F1F1EF;
+    --uva-medium-gray: #DADADA;
+    --uva-text-gray: #666666;
+    --font-display: 'Libre Caslon Text', Georgia, serif;
+    --font-body: 'Libre Franklin', -apple-system, BlinkMacSystemFont, sans-serif;
+  }
+  * { box-sizing: border-box; }
+  body { font-family: var(--font-body); margin: 0; background: var(--uva-light-gray); color: #1a1a1a; }
+  .content { max-width: 1200px; margin: 0 auto; padding: 0 20px 40px; }
+
+  .masthead { background: #fff; border-bottom: 4px solid var(--uva-orange); }
+  .masthead-inner { max-width: 1200px; margin: 0 auto; padding: 20px; display: flex; align-items: center; gap: 20px; flex-wrap: wrap; }
+  .masthead img { height: 56px; width: auto; }
+  .masthead-titles h1 {
+    font-family: var(--font-display); font-weight: 400; font-size: 1.5rem;
+    margin: 0; color: var(--uva-blue);
+  }
+  .nav-link { margin-left: auto; font-size: 0.9rem; }
+  .nav-link a { color: var(--uva-blue); text-decoration: none; font-weight: 600; }
+  .nav-link a:hover { text-decoration: underline; }
+  .subtitle { color: var(--uva-text-gray); margin: 4px 0 0; font-size: 0.95rem; }
+
+  .picker-row { display: flex; align-items: center; gap: 12px; margin: 24px 0; flex-wrap: wrap; }
+  .picker-row label { font-weight: 600; color: var(--uva-blue); }
+  #unitPicker { padding: 10px 12px; font-size: 1rem; border-radius: 4px; border: 1px solid var(--uva-medium-gray);
+    font-family: var(--font-body); min-width: 320px; background: #fff; }
+
+  .stats-grid { display: grid; grid-template-columns: repeat(auto-fit,minmax(200px,1fr)); gap: 12px; margin: 24px 0; }
+  .stat-card { border: 1px solid var(--uva-medium-gray); border-radius: 6px; padding: 16px; text-align: center; background: #fff; }
+  .stat-card h3 { margin: 0 0 6px; font-size: 0.8rem; color: var(--uva-text-gray); font-weight: 600; text-transform: uppercase; letter-spacing: 0.03em; }
+  .stat-number { font-size: 2rem; font-weight: 700; color: var(--uva-blue); }
+  .stat-footnote { font-size: 0.8rem; color: var(--uva-text-gray); margin-top: 4px; }
+
+  .charts-row { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; margin: 20px 0; }
+  .chart-box { border: 1px solid var(--uva-medium-gray); border-radius: 6px; padding: 12px 16px; background: #fff; height: 420px; box-sizing: border-box; position: relative; }
+  .chart-title { text-align: center; margin-bottom: 8px; font-weight: 600; color: var(--uva-blue); }
+  .chart-box canvas { max-height: 100%; }
+
+  .section-note { color: var(--uva-text-gray); font-size: 0.9rem; }
+  #generatedNote { color: var(--uva-text-gray); font-size: 0.85rem; padding-top: 12px; }
+  #loadingMsg { padding: 40px; text-align: center; color: var(--uva-text-gray); font-size: 1.1rem; }
+  #noSelectionMsg { padding: 60px 20px; text-align: center; color: var(--uva-text-gray); font-size: 1.05rem; }
+</style>
+</head>
+<body>
+  <div class="masthead">
+    <div class="masthead-inner">
+      <img src="UVALIB_primary_color_web.png" alt="University of Virginia Library">
+      <div class="masthead-titles">
+        <h1>Department &amp; School Breakdown</h1>
+      </div>
+      <div class="nav-link"><a href="index.html">&larr; Back to Overview</a></div>
+    </div>
+  </div>
+
+  <div class="content">
+  <p class="subtitle" id="windowNote"></p>
+  <p id="generatedNote"></p>
+
+  <div id="loadingMsg">Loading department_dashboard_data.json&hellip;</div>
+
+  <div id="dashboard" style="display:none;">
+
+    <div class="picker-row">
+      <label for="unitPicker">View:</label>
+      <select id="unitPicker"></select>
+    </div>
+
+    <div id="noSelectionMsg">Choose a school/division or department above to see its publishing and citation breakdown.</div>
+
+    <div id="unitDetail" style="display:none;">
+
+      <div id="stats" class="stats-grid"></div>
+      <p class="section-note">"Confident" counts are directly resolved from the work's own affiliation data. "Shared
+        appointment" counts come from authors known (from their OTHER papers) to have standing in more than one
+        department/school, where this specific paper's affiliation text wasn't itself specific enough to say which
+        one -- shown separately rather than blended in, since it's a real but less certain form of credit.</p>
+
+      <div class="charts-row">
+        <div class="chart-box">
+          <div class="chart-title">Top Journals Published In</div>
+          <canvas id="journalsPublishedChart"></canvas>
+        </div>
+        <div class="chart-box">
+          <div class="chart-title">Top Journals Cited</div>
+          <canvas id="journalsCitedChart"></canvas>
+        </div>
+      </div>
+
+    </div>
+  </div>
+
+  </div>
+
+<script>
+let departmentData = null;
+let journalsPublishedChartInstance = null;
+let journalsCitedChartInstance = null;
+
+async function init() {
+  try {
+    const res = await fetch('department_dashboard_data.json');
+    if (!res.ok) throw new Error(`HTTP ${res.status}`);
+    departmentData = await res.json();
+  } catch (e) {
+    document.getElementById('loadingMsg').textContent =
+      'Could not load department_dashboard_data.json: ' + e.message +
+      ' -- make sure it sits alongside this HTML file.';
+    return;
+  }
+
+  document.getElementById('loadingMsg').style.display = 'none';
+  document.getElementById('dashboard').style.display = 'block';
+
+  document.getElementById('windowNote').textContent =
+    `UVA + UVA Health System, rolling window: ${departmentData.window_start_year}-${departmentData.window_end_year} ` +
+    `("what are researchers doing now" -- see README for why this differs from the full-history overview page).`;
+  if (departmentData.generated_at) {
+    document.getElementById('generatedNote').textContent =
+      'Data generated: ' + new Date(departmentData.generated_at).toLocaleString();
+  }
+
+  populatePicker();
+}
+
+function populatePicker() {
+  const picker = document.getElementById('unitPicker');
+
+  const schoolsGroup = document.createElement('optgroup');
+  schoolsGroup.label = 'Schools & Divisions (all departments combined)';
+  Object.keys(departmentData.schools).sort().forEach(name => {
+    const opt = document.createElement('option');
+    opt.value = 'school:' + name;
+    opt.textContent = name;
+    schoolsGroup.appendChild(opt);
+  });
+  picker.appendChild(schoolsGroup);
+
+  // group departments under their (first-listed) parent school for browsability
+  const bySchool = {};
+  Object.entries(departmentData.departments).forEach(([name, info]) => {
+    const school = (info.school_or_division || 'Other').split('; ')[0];
+    if (!bySchool[school]) bySchool[school] = [];
+    bySchool[school].push(name);
+  });
+
+  Object.keys(bySchool).sort().forEach(school => {
+    const group = document.createElement('optgroup');
+    group.label = school + ' — Departments';
+    bySchool[school].sort().forEach(name => {
+      const opt = document.createElement('option');
+      opt.value = 'department:' + name;
+      opt.textContent = name;
+      group.appendChild(opt);
+    });
+    picker.appendChild(group);
+  });
+
+  picker.addEventListener('change', renderSelectedUnit);
+}
+
+function renderSelectedUnit() {
+  const value = document.getElementById('unitPicker').value;
+  if (!value) {
+    document.getElementById('unitDetail').style.display = 'none';
+    document.getElementById('noSelectionMsg').style.display = 'block';
+    return;
+  }
+  const [kind, name] = value.split(/:(.+)/);
+  const info = kind === 'school' ? departmentData.schools[name] : departmentData.departments[name];
+  if (!info) return;
+
+  document.getElementById('noSelectionMsg').style.display = 'none';
+  document.getElementById('unitDetail').style.display = 'block';
+
+  renderStats(info);
+  renderChart('journalsPublishedChart', info.top_journals_published, '#232D4B', 'journalsPublishedChartInstance');
+  renderChart('journalsCitedChart', info.top_journals_cited, '#E57200', 'journalsCitedChartInstance');
+}
+
+function renderStats(info) {
+  const el = document.getElementById('stats');
+  el.innerHTML = `
+    <div class="stat-card"><h3>Works Published (Confident)</h3><div class="stat-number">${info.works_published_confident.toLocaleString()}</div></div>
+    <div class="stat-card"><h3>Works Published (Shared Appt.)</h3><div class="stat-number">${info.works_published_footnote.toLocaleString()}</div></div>
+    <div class="stat-card"><h3>Citations Made (Confident)</h3><div class="stat-number">${info.citations_made_confident.toLocaleString()}</div></div>
+    <div class="stat-card"><h3>Citations Made (Shared Appt.)</h3><div class="stat-number">${info.citations_made_footnote.toLocaleString()}</div></div>
+  `;
+}
+
+function renderChart(canvasId, items, color, instanceVarName) {
+  const canvas = document.getElementById(canvasId);
+  if (window[instanceVarName]) window[instanceVarName].destroy();
+  const chart = new Chart(canvas, {
+    type: 'bar',
+    data: {
+      labels: (items || []).map(i => i.name.length > 30 ? i.name.slice(0,28) + '…' : i.name),
+      datasets: [{ label: 'Count', data: (items || []).map(i => i.count), backgroundColor: color }]
+    },
+    options: {
+      responsive: true, maintainAspectRatio: false,
+      scales: { y: { beginAtZero: true } },
+      plugins: { legend: { display: false } }
+    }
+  });
+  window[instanceVarName] = chart;
+}
+
+init();
+</script>
+</body>
+</html>
