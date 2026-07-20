@@ -56,6 +56,11 @@
   .chart-box canvas { max-height: 100%; }
 
   .section-note { color: var(--uva-text-gray); font-size: 0.9rem; }
+  section { margin: 34px 0; }
+  .section-title { font-family: var(--font-display); font-size: 1.3rem; font-weight: 400; margin-bottom: 4px; color: var(--uva-blue); }
+  table { width: 100%; border-collapse: collapse; margin: 12px 0; font-family: var(--font-body); }
+  th, td { border: 1px solid var(--uva-medium-gray); padding: 8px 10px; text-align: left; }
+  th { background: var(--uva-blue); color: #fff; font-weight: 600; }
   #generatedNote { color: var(--uva-text-gray); font-size: 0.85rem; padding-top: 12px; }
   #loadingMsg { padding: 40px; text-align: center; color: var(--uva-text-gray); font-size: 1.1rem; }
   #noSelectionMsg { padding: 60px 20px; text-align: center; color: var(--uva-text-gray); font-size: 1.05rem; }
@@ -93,7 +98,20 @@
       <p class="section-note">"Confident" counts are directly resolved from the work's own affiliation data. "Shared
         appointment" counts come from authors known (from their OTHER papers) to have standing in more than one
         department/school, where this specific paper's affiliation text wasn't itself specific enough to say which
-        one -- shown separately rather than blended in, since it's a real but less certain form of credit.</p>
+        one -- shown separately rather than blended in, since it's a real but less certain form of credit.
+        <strong>Every chart and table below is built from confident credits only</strong> -- shared-appointment
+        credit is included in the stat counts above but not broken out by year/journal/funder/etc.</p>
+
+      <div class="charts-row">
+        <div class="chart-box">
+          <div class="chart-title">Publication Trends</div>
+          <canvas id="trendsChart"></canvas>
+        </div>
+        <div class="chart-box">
+          <div class="chart-title">Open Access Status</div>
+          <canvas id="oaChart"></canvas>
+        </div>
+      </div>
 
       <div class="charts-row">
         <div class="chart-box">
@@ -106,6 +124,25 @@
         </div>
       </div>
 
+      <div class="charts-row">
+        <div class="chart-box">
+          <div class="chart-title">Top Funders</div>
+          <canvas id="fundersChart"></canvas>
+        </div>
+        <div class="chart-box">
+          <div class="chart-title">Top Publishers</div>
+          <canvas id="publishersChart"></canvas>
+        </div>
+      </div>
+
+      <section>
+        <div class="section-title">Top Cited Works</div>
+        <table id="worksTable">
+          <thead><tr><th>Title</th><th>Year</th><th>OA Status</th><th>Citations</th></tr></thead>
+          <tbody id="worksBody"></tbody>
+        </table>
+      </section>
+
     </div>
   </div>
 
@@ -113,8 +150,7 @@
 
 <script>
 let departmentData = null;
-let journalsPublishedChartInstance = null;
-let journalsCitedChartInstance = null;
+const chartInstances = {};
 
 async function init() {
   try {
@@ -193,8 +229,13 @@ function renderSelectedUnit() {
   document.getElementById('unitDetail').style.display = 'block';
 
   renderStats(info);
-  renderChart('journalsPublishedChart', info.top_journals_published, '#232D4B', 'journalsPublishedChartInstance');
-  renderChart('journalsCitedChart', info.top_journals_cited, '#E57200', 'journalsCitedChartInstance');
+  renderTrendsChart(info.trends || []);
+  renderOAChart(info.oa_breakdown || []);
+  renderBarChart('journalsPublishedChart', info.top_journals_published, '#232D4B');
+  renderBarChart('journalsCitedChart', info.top_journals_cited, '#E57200');
+  renderBarChart('fundersChart', info.top_funders, '#009FDF');
+  renderBarChart('publishersChart', info.top_publishers, '#62BB46');
+  renderWorksTable(info.top_cited_works || []);
 }
 
 function renderStats(info) {
@@ -207,10 +248,45 @@ function renderStats(info) {
   `;
 }
 
-function renderChart(canvasId, items, color, instanceVarName) {
-  const canvas = document.getElementById(canvasId);
-  if (window[instanceVarName]) window[instanceVarName].destroy();
-  const chart = new Chart(canvas, {
+function destroyIfExists(canvasId) {
+  if (chartInstances[canvasId]) {
+    chartInstances[canvasId].destroy();
+    delete chartInstances[canvasId];
+  }
+}
+
+function renderTrendsChart(trends) {
+  destroyIfExists('trendsChart');
+  chartInstances['trendsChart'] = new Chart(document.getElementById('trendsChart'), {
+    type: 'line',
+    data: {
+      labels: trends.map(t => t.year),
+      datasets: [{
+        label: 'Works', data: trends.map(t => t.count),
+        borderColor: '#232D4B', backgroundColor: 'rgba(35,45,75,0.1)',
+        fill: true, tension: 0.4, pointRadius: 3,
+      }]
+    },
+    options: { responsive: true, maintainAspectRatio: false, scales: { y: { beginAtZero: true } } }
+  });
+}
+
+function renderOAChart(oaBreakdown) {
+  const palette = { gold:'#FDDA24', hybrid:'#E57200', bronze:'#cd853f', green:'#62BB46', diamond:'#009FDF', closed:'#DADADA' };
+  destroyIfExists('oaChart');
+  chartInstances['oaChart'] = new Chart(document.getElementById('oaChart'), {
+    type: 'pie',
+    data: {
+      labels: oaBreakdown.map(o => o.name),
+      datasets: [{ data: oaBreakdown.map(o => o.count), backgroundColor: oaBreakdown.map(o => palette[o.name] || '#bbb') }]
+    },
+    options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { position: 'bottom' } } }
+  });
+}
+
+function renderBarChart(canvasId, items, color) {
+  destroyIfExists(canvasId);
+  chartInstances[canvasId] = new Chart(document.getElementById(canvasId), {
     type: 'bar',
     data: {
       labels: (items || []).map(i => i.name.length > 30 ? i.name.slice(0,28) + '…' : i.name),
@@ -222,7 +298,17 @@ function renderChart(canvasId, items, color, instanceVarName) {
       plugins: { legend: { display: false } }
     }
   });
-  window[instanceVarName] = chart;
+}
+
+function renderWorksTable(works) {
+  document.getElementById('worksBody').innerHTML = works.map(w => `
+    <tr>
+      <td><a href="${w.url}" target="_blank">${w.title}</a></td>
+      <td>${w.year ?? 'N/A'}</td>
+      <td>${w.is_oa ? 'Open' : 'Closed'}</td>
+      <td style="font-weight:bold;">${w.citations.toLocaleString()}</td>
+    </tr>
+  `).join('');
 }
 
 init();
