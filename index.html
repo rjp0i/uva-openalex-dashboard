@@ -171,7 +171,13 @@
       </div>
     </section>
 
-    <p class="section-note" id="otherTypesNote" style="text-align:center;"></p>
+    <div class="stats-grid" style="max-width: 320px; margin: 24px auto;">
+      <div class="stat-card">
+        <h3>Other Work Types</h3>
+        <div class="stat-number" id="otherCount">0</div>
+        <small id="otherTypesNote"></small>
+      </div>
+    </div>
 
     <section>
       <div class="section-title">Publishing vs. Citing, by Journal</div>
@@ -350,10 +356,9 @@ function renderBooksSection(books) {
 function renderOtherTypesNote(other) {
   if (!other) return;
   const breakdown = (other.breakdown || []).map(b => `${b.name}: ${b.count.toLocaleString()}`).join(', ');
+  document.getElementById('otherCount').textContent = other.count.toLocaleString();
   const el = document.getElementById('otherTypesNote');
-  el.textContent = `${other.count.toLocaleString()} additional OpenAlex entries affiliated with UVA are neither ` +
-    `"Articles" (article/review/book-chapter) nor "Books" as defined above -- datasets, dissertations, editorials, ` +
-    `letters, preprints, etc. -- not reflected in any chart on this page.`;
+  el.textContent = `Datasets, dissertations, editorials, letters, preprints, etc. -- not reflected in any chart on this page.`;
   el.title = breakdown; // hover for the type-by-type breakdown
 }
 
