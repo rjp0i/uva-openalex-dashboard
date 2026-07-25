@@ -126,12 +126,12 @@
 
       <div class="charts-row">
         <div class="chart-box">
-          <div class="chart-title">Top Funders</div>
-          <canvas id="fundersChart"></canvas>
-        </div>
-        <div class="chart-box">
           <div class="chart-title">Top Publishers</div>
           <canvas id="publishersChart"></canvas>
+        </div>
+        <div class="chart-box">
+          <div class="chart-title">Top Funders</div>
+          <canvas id="fundersChart"></canvas>
         </div>
       </div>
 
@@ -334,7 +334,7 @@ function renderBarChart(canvasId, items, color) {
     },
     options: {
       responsive: true, maintainAspectRatio: false,
-      scales: { y: { beginAtZero: true } },
+      scales: { y: { beginAtZero: true, title: { display: true, text: 'Number', font: { size: 10 }, padding: 0 } } },
       plugins: { legend: { display: false } }
     }
   });
